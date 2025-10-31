@@ -46,7 +46,8 @@ export default function VideoScrubSection({ t }: Props) {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-      animationFrameId = requestAnimationFrame(animate);
+      animationFrameId = setTimeout(animate, 33); // ~30fps
+
     };
 
     const handleLoadedMetadata = () => {
