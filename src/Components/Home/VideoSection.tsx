@@ -83,14 +83,16 @@ const handleScroll = () => {
       style={{ height: '300vh', willChange: 'transform' }}
     >
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          preload="auto"
-          muted
-          playsInline
-          src={MetabridgeVideo}
-        />
+<video
+  preload="metadata"
+  playsInline
+  muted
+  webkit-playsinline="true"
+  x-webkit-airplay="deny"
+  disablePictureInPicture
+  src={MetabridgeVideo}
+/>
+
         {!isVideoLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-white text-xl">Loading video...</div>
