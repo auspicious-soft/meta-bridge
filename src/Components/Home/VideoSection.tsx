@@ -23,12 +23,14 @@ export default function VideoScrubSection({ t }: Props) {
     let targetTime = 0;
     let animationFrameId: number;
 
-    const handleScroll = () => {
-      const rect = container.getBoundingClientRect();
-      const scrollRange = container.offsetHeight - window.innerHeight;
-      const scrollProgress = Math.max(0, Math.min(1, -rect.top / scrollRange));
-      targetTime = scrollProgress * video.duration;
-    };
+const handleScroll = () => {
+  if (!video || !container) return;
+  const scrollTop = window.scrollY - container.offsetTop;
+  const scrollRange = container.offsetHeight - window.innerHeight;
+  const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
+  targetTime = scrollProgress * video.duration;
+};
+
 
     const animate = () => {
       if (video && video.duration) {
@@ -46,7 +48,7 @@ export default function VideoScrubSection({ t }: Props) {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-      animationFrameId = requestAnimationFrame(animate);
+      animationFrameId = setTimeout(animate, 33); // ~30fps
     };
 
     const handleLoadedMetadata = () => {
@@ -54,18 +56,22 @@ export default function VideoScrubSection({ t }: Props) {
       handleScroll();
     };
 
-    const unlockVideo = () => {
-      video.play().then(() => video.pause()).catch(() => { });
-      window.removeEventListener("touchstart", unlockVideo);
-    };
-    window.addEventListener("touchstart", unlockVideo);
+   const unlockVideo = () => {
+  video.play().then(() => {
+    video.pause();
+    video.currentTime = 0;
+    setIsVideoLoaded(true);
+  }).catch(() => {});
+  window.removeEventListener("touchstart", unlockVideo);
+};
+
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     animate();
 
-    return () => {
+    return () => { 
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('touchstart', unlockVideo);
@@ -80,14 +86,16 @@ export default function VideoScrubSection({ t }: Props) {
       style={{ height: '300vh', willChange: 'transform' }}
     >
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          preload="auto"
-          muted
-          playsInline
-          src={MetabridgeVideo}
-        />
+       <video
+  preload="metadata"
+  playsInline
+  muted
+  webkit-playsinline="true"
+  x-webkit-airplay="deny"
+  disablePictureInPicture
+  src={MetabridgeVideo}
+/>
+
         {!isVideoLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-white text-xl">Loading video...</div>
