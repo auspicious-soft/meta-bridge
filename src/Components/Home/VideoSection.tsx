@@ -23,12 +23,14 @@ export default function VideoScrubSection({ t }: Props) {
     let targetTime = 0;
     let animationFrameId: number;
 
-    const handleScroll = () => {
-      const rect = container.getBoundingClientRect();
-      const scrollRange = container.offsetHeight - window.innerHeight;
-      const scrollProgress = Math.max(0, Math.min(1, -rect.top / scrollRange));
-      targetTime = scrollProgress * video.duration;
-    };
+   const handleScroll = () => {
+  if (!video || !container) return;
+  const scrollTop = window.scrollY - container.offsetTop;
+  const scrollRange = container.offsetHeight - window.innerHeight;
+  const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
+  targetTime = scrollProgress * video.duration;
+};
+
 
     const animate = () => {
       if (video && video.duration) {
