@@ -15,11 +15,6 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -32,7 +27,7 @@ export default function VideoScrubSection({ t }: Props) {
 
     const handleScroll = () => {
       const now = performance.now();
-      if (now - lastScrollTime < 10) return; // ~30fps
+      if (now - lastScrollTime < 33) return; // ~30fps
       lastScrollTime = now;
 
       const scrollTop = window.scrollY - container.offsetTop;
@@ -45,7 +40,6 @@ export default function VideoScrubSection({ t }: Props) {
           if (video && video.readyState >= 2) {
             const diff = targetTime - video.currentTime;
             if (Math.abs(diff) > 0.1) {
-              // Apply easing for smooth motion
               video.currentTime += diff * 0.3;
             }
           }
@@ -56,15 +50,18 @@ export default function VideoScrubSection({ t }: Props) {
 
     const handleLoadedMetadata = () => {
       setIsVideoLoaded(true);
-      handleScroll(); // Sync first frame
+      handleScroll();
     };
 
     const unlockVideo = () => {
-      video.play().then(() => {
-        video.pause();
-        video.currentTime = 0;
-        setIsVideoLoaded(true);
-      }).catch(() => {});
+      video
+        .play()
+        .then(() => {
+          video.pause();
+          video.currentTime = 0;
+          setIsVideoLoaded(true);
+        })
+        .catch(() => {});
       window.removeEventListener("touchstart", unlockVideo);
     };
     window.addEventListener("touchstart", unlockVideo, { once: true });
@@ -80,15 +77,16 @@ export default function VideoScrubSection({ t }: Props) {
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative"
-      style={{ height: "300vh" }}
-    >
+    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* ✅ Keep video in its own GPU layer */}
         <video
           ref={videoRef}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover pointer-events-none will-change-transform"
+          style={{
+            transform: "translateZ(0)", // isolate video layer
+            backfaceVisibility: "hidden",
+          }}
           preload="auto"
           muted
           playsInline
@@ -96,13 +94,25 @@ export default function VideoScrubSection({ t }: Props) {
           webkit-playsinline="true"
           src={MetabridgeVideo}
         />
+
         {!isVideoLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-white text-xl">Loading video...</div>
           </div>
         )}
-        <div className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6 overflow-hidden">
-          <div className="max-w-[900px] mx-auto text-center">
+
+        {/* ✅ Overlay text promoted to its own GPU layer */}
+        <div
+          className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
+          style={{
+            transform: "translateZ(0)",
+            backfaceVisibility: "hidden",
+            willChange: "opacity, transform",
+            zIndex: 2,
+            pointerEvents: "none", // prevents re-layering
+          }}
+        >
+          <div className="max-w-[900px] mx-auto text-center pointer-events-auto">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
               {t.heroSubTitle}
             </h6>
