@@ -16,19 +16,21 @@ export default function VideoScrubSection({ t }: Props) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoRef.current; 
     const container = containerRef.current;
     if (!video || !container) return;
 
     let targetTime = 0;
     let animationFrameId: number;
 
-    const handleScroll = () => {
-      const rect = container.getBoundingClientRect();
-      const scrollRange = container.offsetHeight - window.innerHeight;
-      const scrollProgress = Math.max(0, Math.min(1, -rect.top / scrollRange));
-      targetTime = scrollProgress * video.duration;
-    };
+const handleScroll = () => {
+  if (!video || !container) return;
+  const scrollTop = window.scrollY - container.offsetTop;
+  const scrollRange = container.offsetHeight - window.innerHeight;
+  const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
+  targetTime = scrollProgress * video.duration;
+};
+
 
     const animate = () => {
       if (video && video.duration) {
@@ -46,7 +48,8 @@ export default function VideoScrubSection({ t }: Props) {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-      animationFrameId = requestAnimationFrame(animate);
+     animationFrameId = setTimeout(animate, 33); // ~30fps
+
     };
 
     const handleLoadedMetadata = () => {
