@@ -32,7 +32,7 @@ export default function VideoScrubSection({ t }: Props) {
 
     const handleScroll = () => {
       const now = performance.now();
-      if (now - lastScrollTime < 33) return; // ~30fps
+      if (now - lastScrollTime < 10) return; // ~30fps
       lastScrollTime = now;
 
       const scrollTop = window.scrollY - container.offsetTop;
