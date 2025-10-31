@@ -101,7 +101,16 @@ export default function VideoScrubSection({ t }: Props) {
             <div className="text-white text-xl">Loading video...</div>
           </div>
         )}
-        <div className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6">
+        <div
+  className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
+  style={{
+    transform: "translateZ(0)", // 🟢 Fixes text blinking
+    backfaceVisibility: "hidden",
+    willChange: "transform",
+    zIndex: 2,
+  }} 
+>
+
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
               {t.heroSubTitle}
