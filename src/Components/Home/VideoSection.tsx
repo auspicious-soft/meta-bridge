@@ -16,21 +16,19 @@ export default function VideoScrubSection({ t }: Props) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
   useEffect(() => {
-    const video = videoRef.current; 
+    const video = videoRef.current;
     const container = containerRef.current;
     if (!video || !container) return;
 
     let targetTime = 0;
     let animationFrameId: number;
 
-const handleScroll = () => {
-  if (!video || !container) return;
-  const scrollTop = window.scrollY - container.offsetTop;
-  const scrollRange = container.offsetHeight - window.innerHeight;
-  const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
-  targetTime = scrollProgress * video.duration;
-};
-
+    const handleScroll = () => {
+      const rect = container.getBoundingClientRect();
+      const scrollRange = container.offsetHeight - window.innerHeight;
+      const scrollProgress = Math.max(0, Math.min(1, -rect.top / scrollRange));
+      targetTime = scrollProgress * video.duration;
+    };
 
     const animate = () => {
       if (video && video.duration) {
@@ -48,8 +46,7 @@ const handleScroll = () => {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-     animationFrameId = setTimeout(animate, 33); // ~30fps
-
+      animationFrameId = requestAnimationFrame(animate);
     };
 
     const handleLoadedMetadata = () => {
@@ -83,16 +80,14 @@ const handleScroll = () => {
       style={{ height: '300vh', willChange: 'transform' }}
     >
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-<video
-  preload="metadata"
-  playsInline
-  muted
-  webkit-playsinline="true"
-  x-webkit-airplay="deny"
-  disablePictureInPicture
-  src={MetabridgeVideo}
-/>
-
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          preload="auto"
+          muted
+          playsInline
+          src={MetabridgeVideo}
+        />
         {!isVideoLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-white text-xl">Loading video...</div>
