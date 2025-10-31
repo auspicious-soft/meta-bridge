@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import MetabridgeVideo from "../../Assets/output-1.mp4";
+import MetabridgeVideo from "../../Assets/metabridge-video-new.mp4";
 import ContactButton from '../ContactButton';
 type Props = {
   t: {
