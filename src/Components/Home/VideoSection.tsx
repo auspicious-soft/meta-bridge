@@ -48,8 +48,7 @@ const handleScroll = () => {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-     animationFrameId = setTimeout(animate, 33); // ~30fps
-
+      animationFrameId = requestAnimationFrame(animate);
     };
 
     const handleLoadedMetadata = () => {
