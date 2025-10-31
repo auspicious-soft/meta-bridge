@@ -48,7 +48,8 @@ const handleScroll = () => {
         if (video.currentTime < 0) video.currentTime = 0;
       }
 
-      animationFrameId = setTimeout(animate, 33); // ~30fps
+     animationFrameId = setTimeout(animate, 33); // ~30fps
+
     };
 
     const handleLoadedMetadata = () => {
@@ -56,22 +57,18 @@ const handleScroll = () => {
       handleScroll();
     };
 
-   const unlockVideo = () => {
-  video.play().then(() => {
-    video.pause();
-    video.currentTime = 0;
-    setIsVideoLoaded(true);
-  }).catch(() => {});
-  window.removeEventListener("touchstart", unlockVideo);
-};
-
+    const unlockVideo = () => {
+      video.play().then(() => video.pause()).catch(() => { });
+      window.removeEventListener("touchstart", unlockVideo);
+    };
+    window.addEventListener("touchstart", unlockVideo);
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     animate();
 
-    return () => { 
+    return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('touchstart', unlockVideo);
@@ -86,16 +83,14 @@ const handleScroll = () => {
       style={{ height: '300vh', willChange: 'transform' }}
     >
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-       <video
-  preload="metadata"
-  playsInline
-  muted
-  webkit-playsinline="true"
-  x-webkit-airplay="deny"
-  disablePictureInPicture
-  src={MetabridgeVideo}
-/>
-
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          preload="auto"
+          muted
+          playsInline
+          src={MetabridgeVideo}
+        />
         {!isVideoLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-white text-xl">Loading video...</div>
