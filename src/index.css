@@ -74,9 +74,7 @@ img{
   box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
 } */
- 
-/* --- FIX: Prevent iOS & Android GPU layer flicker --- */
-
+/* --- FIX mobile layer flicker globally --- */
 html, body {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
@@ -93,13 +91,24 @@ video, img {
   will-change: opacity;
 }
 
-.sticky, .fixed, [style*="position:sticky"], [style*="position:fixed"] {
-  -webkit-transform: translateZ(0);
+.sticky, .fixed {
   transform: translateZ(0);
+  will-change: transform;
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
+.hero-video-container {
+  transform: translate3d(0,0,0);
+  -webkit-transform: translate3d(0,0,0);
+  contain: layout paint style;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  will-change: transform;
+  transform: translate3d(0,0,0);
+  backface-visibility: hidden;
 }
 
 
