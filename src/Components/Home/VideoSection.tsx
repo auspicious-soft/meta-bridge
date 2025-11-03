@@ -24,94 +24,78 @@ export default function VideoScrubSection({ t }: Props) {
     if (!container || !video) return;
 
     let rafId: number | null = null;
-    let didMarkReady = false;
+    let targetTime = 0;
+    let currentTime = 0;
+    let isUserActivated = false;
 
-    const markReady = () => {
-      if (!didMarkReady) {
-        didMarkReady = true;
-        setIsReady(true);
-      }
-    };
+    // Smooth interpolation (lerp)
+    const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+
+    const markReady = () => setIsReady(true);
 
     const updateVideoTime = () => {
-      if (!video || video.readyState < 2) return;
+      if (!video || video.readyState < 2) {
+        rafId = requestAnimationFrame(updateVideoTime);
+        return;
+      }
+
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
       const progress = Math.min(
         1,
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
-      const target = progress * (video.duration || 0);
-      const diff = target - video.currentTime;
 
-      // ✅ smoother interpolation — smaller step
-      video.currentTime += diff * 0.1;
+      // ✅ Compute target time based on scroll progress
+      targetTime = progress * (video.duration || 0);
+
+      // ✅ Smooth interpolation between currentTime & targetTime
+      currentTime = lerp(currentTime, targetTime, 0.08);
+
+      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+        try {
+          video.currentTime = currentTime;
+        } catch (err) {
+          // Chrome may block before play gesture
+        }
+      }
 
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    const onScroll = () => {
-      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
-    };
-
-    const canRenderFirstFrame = () => {
+    const tryActivateVideo = async () => {
+      if (isUserActivated) return;
+      isUserActivated = true;
       try {
-        const buffered = video.buffered;
-        if (buffered && buffered.length > 0 && buffered.end(0) > 0.05)
-          return true;
-        if (video.readyState >= 2) return true;
-      } catch {}
-      return false;
-    };
-
-    const attemptPlayShort = async (ms = 150) => {
-      try {
-        video.currentTime = 0;
-        const playPromise = video.play();
-        if (playPromise && typeof playPromise.then === "function") {
-          await playPromise;
-        }
-        await new Promise((res) => setTimeout(res, ms));
-        video.pause();
+        await video.play();
+        video.pause(); // forces Chrome to decode frames
         video.currentTime = 0;
         markReady();
-        return true;
-      } catch {
-        return false;
+      } catch (err) {
+        console.warn("Autoplay blocked, will activate on user gesture.");
       }
     };
 
-    const onLoadedMeta = async () => {
-      const ok = await attemptPlayShort(120);
-      if (!ok && canRenderFirstFrame()) markReady();
-    };
-
-    const onProgress = () => {
-      if (canRenderFirstFrame()) markReady();
-    };
-
     const onUserGesture = async () => {
-      const ok = await attemptPlayShort(100);
-      if (ok) markReady();
-      window.removeEventListener("touchstart", onUserGesture);
+      await tryActivateVideo();
       window.removeEventListener("click", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
     };
 
-    video.addEventListener("loadedmetadata", onLoadedMeta);
-    video.addEventListener("progress", onProgress);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("touchstart", onUserGesture, { once: true });
+    video.addEventListener("loadeddata", markReady);
+    window.addEventListener("scroll", () => {
+      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
+    });
     window.addEventListener("click", onUserGesture, { once: true });
+    window.addEventListener("touchstart", onUserGesture, { once: true });
 
-    if (canRenderFirstFrame()) markReady();
+    // Start loop right away
+    rafId = requestAnimationFrame(updateVideoTime);
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-      video.removeEventListener("loadedmetadata", onLoadedMeta);
-      video.removeEventListener("progress", onProgress);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("touchstart", onUserGesture);
       window.removeEventListener("click", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
     };
   }, []);
 
@@ -132,7 +116,7 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Single video (desktop+mobile) */}
+        {/* ✅ Single video works on Chrome, Safari, Mobile */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
@@ -166,4 +150,4 @@ export default function VideoScrubSection({ t }: Props) {
       </div>
     </div>
   );
-}
+} 
