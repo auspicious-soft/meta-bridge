@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import {  useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 // ✅ Use public folder paths for better performance (CDN / caching)
@@ -22,7 +22,7 @@ export default function VideoScrubSection({ t }: Props) {
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current;
     const video =
       window.innerWidth >= 768
@@ -37,7 +37,7 @@ export default function VideoScrubSection({ t }: Props) {
     const markReady = () => {
       if (didMarkReady) return;
       didMarkReady = true;
-      setIsReady(true);
+     setIsReady((prev) => prev || true);
     };
 
     const updateVideoTime = () => {
