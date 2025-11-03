@@ -132,64 +132,62 @@ export default function VideoScrubSection({ t }: Props) {
     };
   }, [isReady]);
 
-return (
-  <div
-    ref={containerRef}
-    className="relative hero-video-container"
-    style={{ height: "300vh" }}
-  >
+ return (
+  <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
     <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
 
+      {/* ✅ Keep gradient visible until video fully ready */}
       {!isReady && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
       )}
 
-      {/* Posters */}
+      {/* ✅ Posters */}
       <img
         src={POSTER_DESKTOP}
-        alt="Poster"
-        className={`absolute inset-0 w-full h-full object-cover hidden md:block transition-opacity duration-500 ${
+        alt="Metabridge background"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
           isReady ? "opacity-0" : "opacity-100"
         }`}
       />
       <img
         src={POSTER_MOBILE}
-        alt="Poster"
-        className={`absolute inset-0 w-full h-full object-cover block md:hidden transition-opacity duration-500 ${
+        alt="Metabridge background"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
           isReady ? "opacity-0" : "opacity-100"
         }`}
       />
 
-      {/* Desktop Video */}
-      <video
-        ref={desktopVideoRef}
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block ${
-          isReady ? "opacity-100" : "opacity-0"
-        }`}
-        preload="auto"
-        muted
-        playsInline
-        disablePictureInPicture
-        poster={POSTER_DESKTOP}
-        src={DESKTOP_VIDEO}
-      />
+      {/* ✅ Video layers - fade in only once */}
+<video
+  ref={desktopVideoRef}
+  className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block video-layer ${
+    isReady ? "opacity-100" : "opacity-0"
+  }`}
+  preload="auto"
+  muted
+  playsInline
+  disablePictureInPicture
+  poster={POSTER_DESKTOP}
+  src={DESKTOP_VIDEO}
+/>
 
-      {/* Mobile Video – always visible once ready */}
-      <video
-        ref={mobileVideoRef}
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden ${
-          isReady ? "opacity-100" : "opacity-0"
-        }`}
-        preload="auto"
-        muted
-        playsInline
-        disablePictureInPicture
-        poster={POSTER_MOBILE}
-        src={MOBILE_VIDEO}
-      />
+<video 
+  ref={mobileVideoRef}
+  className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden video-layer ${
+    isReady ? "opacity-100" : "opacity-0"
+  }`}
+  preload="auto"
+  muted
+  playsInline
+  disablePictureInPicture
+  poster={POSTER_MOBILE}
+  src={MOBILE_VIDEO}
+/>
 
-      {/* Overlay Text */}
-      <div className="hero-overlay flex flex-col justify-center items-center pt-[77px] px-6">
+      {/* ✅ Overlay text fixed above video layer */}
+      <div
+        className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6"
+      >
         <div className="max-w-[900px] mx-auto text-center">
           <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
             {t.heroSubTitle}
@@ -208,7 +206,6 @@ return (
     </div>
   </div>
 );
-
 
 }
 

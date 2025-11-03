@@ -74,62 +74,12 @@ img{
   box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
 } */
-/* --- FIX mobile layer flicker globally --- */
-html, body {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  will-change: scroll-position;
-  background-color: #0b1016;
-}
-
-video, img {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: opacity;
-}
-
-.sticky, .fixed {
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-.hero-video-container {
-  transform: translate3d(0,0,0);
-  -webkit-transform: translate3d(0,0,0);
-  contain: layout paint style;
-}
-
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  will-change: transform;
-  transform: translate3d(0,0,0);
-  backface-visibility: hidden;
-}
 
 
 .glass-container svg {
   fill: white;
 }
  
-/* Prevent text flicker on iOS & Android GPU compositing */
-.hero-overlay {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  position: relative;
-  z-index: 30;
-}
-
-.video-layer {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: opacity;
-}
 
 @media(min-width: 769px){
 .button-hover:hover .icon {
