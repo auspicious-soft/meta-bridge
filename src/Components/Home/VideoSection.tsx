@@ -5,7 +5,7 @@ import ContactButton from "../ContactButton";
 const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
 const MOBILE_VIDEO = "/metabridge-video-mobile-optimized.mp4";
 const POSTER_DESKTOP = "/metabridge-video-poster.png";
-const POSTER_MOBILE = "/metabridge-poster-mobile.png";
+const POSTER_MOBILE = "/metabridge-poster-mobile.png"; 
 
 type Props = {
   t: {
