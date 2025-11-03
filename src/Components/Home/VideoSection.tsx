@@ -177,7 +177,7 @@ export default function VideoScrubSection({ t }: Props) {
             isReady ? "opacity-100" : "opacity-0"
           }`}
           // preload="auto"
-          preload="metadata"   // changes 
+          preload="auto"   // changes 
           crossOrigin="anonymous" // changes
           muted
           playsInline
