@@ -167,9 +167,9 @@ export default function VideoScrubSection({ t }: Props) {
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
           muted
           playsInline
+          preload="true"
           disablePictureInPicture
           poster={POSTER_DESKTOP}
           src={DESKTOP_VIDEO}
