@@ -171,7 +171,9 @@ export default function VideoScrubSection({ t }: Props) {
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
+          // preload="auto"
+          preload="metadata"   // changes 
+          crossOrigin="anonymous" // changes
           muted
           playsInline
           disablePictureInPicture
