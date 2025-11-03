@@ -43,17 +43,21 @@ export default function VideoScrubSection({ t }: Props) {
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    // ✅ Ensure first frame is visible immediately
-    const showFirstFrame = () => {
+    // ✅ Force first frame to render by playing a tiny part
+    const showFirstFrame = async () => {
       try {
         video.currentTime = 0;
-        video.play().then(() => {
+        await video.play();
+        setTimeout(() => {
           video.pause();
-        });
-      } catch {}
+          video.currentTime = 0;
+        }, 150); // play 0.15s to force rendering
+      } catch (err) {
+        // some mobile browsers block autoplay – handled below
+      }
     };
 
-    // ✅ Unlock autoplay on iOS
+    // ✅ Unlock playback for iOS Safari if autoplay blocked
     const unlockVideo = () => {
       video.play().then(() => {
         video.pause();
@@ -76,7 +80,6 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* ✅ Video always visible */}
         <video
           ref={videoRef}
           className="w-full h-full object-cover pointer-events-none"
@@ -87,7 +90,6 @@ export default function VideoScrubSection({ t }: Props) {
           src={MetabridgeVideo}
         />
 
-        {/* ✅ Text overlay (no flicker tweaks) */}
         <div
           className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
           style={{
