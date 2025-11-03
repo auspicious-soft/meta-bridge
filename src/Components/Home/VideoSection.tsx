@@ -3,8 +3,9 @@ import ContactButton from "../ContactButton";
 
 // ✅ Use public folder paths for better performance (CDN / caching)
 const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
+const MOBILE_VIDEO = "/metabridge-video-mobile-optimized.mp4";
 const POSTER_DESKTOP = "/metabridge-video-poster.png";
-
+const POSTER_MOBILE = "/metabridge-poster-mobile.png";
 
 type Props = {
   t: {
@@ -138,22 +139,22 @@ export default function VideoScrubSection({ t }: Props) {
         <img
           src={POSTER_DESKTOP}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500  ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         />
-        {/* <img
+        <img
           src={POSTER_MOBILE}
           alt="Metabridge background"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
-        /> */}
+        />
 
         {/* Desktop Video */}
         <video
           ref={desktopVideoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500  ${
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 hidden md:block ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           preload="auto"
@@ -165,7 +166,7 @@ export default function VideoScrubSection({ t }: Props) {
         />
 
         {/* Mobile Video */}
-        {/* <video
+        <video
           ref={mobileVideoRef}
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-100" : "opacity-0"
@@ -176,7 +177,7 @@ export default function VideoScrubSection({ t }: Props) {
           disablePictureInPicture
           poster={POSTER_MOBILE}
           src={MOBILE_VIDEO}
-        /> */}
+        />
 
         {/* Overlay Text */}
         <div
