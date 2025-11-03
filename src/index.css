@@ -75,12 +75,10 @@ img{
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
 } */
 
-
 .glass-container svg {
   fill: white;
 }
  
-
 @media(min-width: 769px){
 .button-hover:hover .icon {
   transform: translateX(-100px); 

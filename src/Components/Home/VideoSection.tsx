@@ -178,7 +178,7 @@ export default function VideoScrubSection({ t }: Props) {
   }`}
   preload="auto"
   muted
-  playsInline
+  playsInline 
   disablePictureInPicture
   poster={POSTER_MOBILE}
   src={MOBILE_VIDEO}
@@ -190,7 +190,7 @@ export default function VideoScrubSection({ t }: Props) {
       >
         <div className="max-w-[900px] mx-auto text-center">
           <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
-            {t.heroSubTitle}
+            {t.heroSubTitle} ss
           </h6>
           <h1 className="text-[#f1f5f8] text-[32px] md:text-[55px] font-medium leading-[42px] md:leading-[74px]">
             {t.heroTitle}
