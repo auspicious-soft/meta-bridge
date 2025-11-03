@@ -146,18 +146,21 @@ export default function PinnedScrollSection({ t }: everyProps) {
                                 <span className="hidden md:block">{t.everyStepTitleLeft}</span>
 
                                 {/* White Box Between Words */}
-                                <span
-                                    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl"
-                                    style={{
-                                        width: `${100 * boxScale}px`,
-                                        height: `${50 * boxScale}px`,
-                                        fontSize: `${6 * boxScale}px`,
-                                        transition: 'all 0.2s ease-out',
-                                        opacity: boxOpacity,
-                                        WebkitFontSmoothing: 'antialiased',
-                                        textRendering: 'optimizeLegibility',
-                                    }}
-                                >
+                             <span
+    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl"
+    style={{
+        width: '100px',
+        height: '50px',
+        fontSize: '6px',
+        transform: `scale(${1 + eased * (maxScale / 5)})`, // smoother, GPU-accelerated
+        transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease-out',
+        opacity: boxOpacity,
+        WebkitFontSmoothing: 'antialiased',
+        textRendering: 'optimizeLegibility',
+        willChange: 'transform, opacity',
+    }}
+>
+
                                     <div className="w-full h-full flex items-center justify-center p-3">
                                         <div className="text-gray-900 text-center">
                                             <div className="glancyr-medium mb-1">{t.everyStepTitleBoxFirst}</div>
