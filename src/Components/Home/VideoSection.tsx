@@ -21,77 +21,75 @@ export default function VideoScrubSection({ t }: Props) {
     const container = containerRef.current;
     if (!video || !container) return;
 
-    let targetTime = 0;
     let rafId: number | null = null;
-    let lastScrollTime = 0;
+    let lastScrollY = 0;
 
-    const handleScroll = () => {
-      const now = performance.now();
-      if (now - lastScrollTime < 33) return; // ~30fps
-      lastScrollTime = now;
-
+    const updateVideoTime = () => {
+      if (!video || video.readyState < 2) return;
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
       const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
-      targetTime = scrollProgress * video.duration;
+      const targetTime = scrollProgress * video.duration;
 
-      if (!rafId) {
-        rafId = requestAnimationFrame(() => {
-          if (video && video.readyState >= 2) {
-            const diff = targetTime - video.currentTime;
-            if (Math.abs(diff) > 0.1) {
-              video.currentTime += diff * 0.3;
-            }
-          }
-          rafId = null;
-        });
+      // Smooth transition
+      const diff = targetTime - video.currentTime;
+      if (Math.abs(diff) > 0.02) {
+        video.currentTime += diff * 0.2;
+        rafId = requestAnimationFrame(updateVideoTime);
+      } else {
+        rafId = null;
       }
     };
 
-    const handleLoadedMetadata = () => {
-      setIsVideoLoaded(true);
-      handleScroll();
+    const handleScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    const unlockVideo = () => {
-      video
-        .play()
-        .then(() => {
+    const handleLoaded = () => {
+      setIsVideoLoaded(true);
+
+      // ✅ Force the first frame to render
+      try {
+        video.currentTime = 0;
+        video.play().then(() => {
           video.pause();
-          video.currentTime = 0;
-          setIsVideoLoaded(true);
-        })
-        .catch(() => {});
+        });
+      } catch {}
+      updateVideoTime();
+    };
+
+    // ✅ Autoplay unlock for iOS
+    const unlockVideo = () => {
+      video.play().then(() => {
+        video.pause();
+        video.currentTime = 0;
+        setIsVideoLoaded(true);
+      });
       window.removeEventListener("touchstart", unlockVideo);
     };
     window.addEventListener("touchstart", unlockVideo, { once: true });
 
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("loadeddata", handleLoaded);
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      window.removeEventListener("scroll", handleScroll);
       cancelAnimationFrame(rafId ?? 0);
+      video.removeEventListener("loadeddata", handleLoaded);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* ✅ Keep video in its own GPU layer */}
         <video
           ref={videoRef}
-          className="w-full h-full object-cover pointer-events-none will-change-transform"
-          style={{
-            transform: "translateZ(0)", // isolate video layer
-            backfaceVisibility: "hidden",
-          }}
+          className="w-full h-full object-cover pointer-events-none"
           preload="auto"
           muted
           playsInline
           disablePictureInPicture
-          webkit-playsinline="true"
           src={MetabridgeVideo}
         />
 
@@ -101,15 +99,12 @@ export default function VideoScrubSection({ t }: Props) {
           </div>
         )}
 
-        {/* ✅ Overlay text promoted to its own GPU layer */}
+        {/* ✅ Remove will-change to stop flicker */}
         <div
           className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
           style={{
-            transform: "translateZ(0)",
-            backfaceVisibility: "hidden",
-            willChange: "opacity, transform",
             zIndex: 2,
-            pointerEvents: "none", // prevents re-layering
+            pointerEvents: "none",
           }}
         >
           <div className="max-w-[900px] mx-auto text-center pointer-events-auto">
