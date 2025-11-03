@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import MetabridgeVideo from "../../Assets/metabridge-video-c.mp4";
-import MetabridgeVideoMobile from "../../Assets/metabridge-video-mobile.mp4";
-import PosterImage from "../../Assets/metabridge-video-poster.png"; 
-import PosterMobileImage from "../../Assets/metabridge-poster-mobile.png"; // still image
 import ContactButton from "../ContactButton";
+
+// ✅ Use public folder paths for better performance (CDN / caching)
+const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
+const MOBILE_VIDEO = "/metabridge-video-mobile-optimized.mp4";
+const POSTER_DESKTOP = "/metabridge-video-poster.png";
+const POSTER_MOBILE = "/metabridge-poster-mobile.png";
 
 type Props = {
   t: {
@@ -16,32 +18,39 @@ type Props = {
 
 export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isReady, setIsReady] = useState(false); // when true, show video and enable scrubbing
+  const desktopVideoRef = useRef<HTMLVideoElement>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const video = videoRef.current;
     const container = containerRef.current;
-    if (!video || !container) return;
+    const video =
+      window.innerWidth >= 768
+        ? desktopVideoRef.current
+        : mobileVideoRef.current;
+
+    if (!container || !video) return;
 
     let rafId: number | null = null;
     let didMarkReady = false;
 
-    // Helper: mark ready once (idempotent)
     const markReady = () => {
       if (didMarkReady) return;
       didMarkReady = true;
       setIsReady(true);
     };
 
-    // Update video currentTime based on scroll (scrubbing)
     const updateVideoTime = () => {
       if (!video || video.readyState < 2) return;
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
-      const target = progress * (isFinite(video.duration) ? video.duration : 0);
+      const progress = Math.min(
+        1,
+        Math.max(0, scrollTop / Math.max(1, scrollRange))
+      );
+      const target = progress * (video.duration || 0);
       const diff = target - video.currentTime;
+
       if (Math.abs(diff) > 0.02) {
         video.currentTime += diff * 0.2;
         rafId = requestAnimationFrame(updateVideoTime);
@@ -55,16 +64,27 @@ export default function VideoScrubSection({ t }: Props) {
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    // Attempt to play briefly to force a frame; resolves if play succeeds
+    const canRenderFirstFrame = () => {
+      try {
+        const buffered = video.buffered;
+        if (buffered && buffered.length > 0) {
+          const end = buffered.end(buffered.length - 1);
+          if (end > 0.05) return true;
+        }
+        if (video.readyState >= 2) return true;
+      } catch {
+        // ignore
+      }
+      return false;
+    };
+
     const attemptPlayShort = async (ms = 150) => {
       try {
-        // ensure we're at start
         video.currentTime = 0;
-        const p = video.play();
-        if (p && typeof p.then === "function") {
-          await p;
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          await playPromise;
         }
-        // play succeeded — pause after a short moment to let browser paint
         await new Promise((res) => setTimeout(res, ms));
         video.pause();
         video.currentTime = 0;
@@ -75,60 +95,23 @@ export default function VideoScrubSection({ t }: Props) {
       }
     };
 
-    // Fallback: check buffered ranges to see if 0 second is buffered/can render
-    const canRenderFirstFrame = () => {
-      try {
-        // If canplay event fired, browser should be able to render first frame.
-        // Also use buffered end >= 0.1 as a heuristic
-        const buffered = video.buffered;
-        if (buffered && buffered.length > 0) {
-          const end = buffered.end(buffered.length - 1);
-          if (end > 0.05) return true;
-        }
-        // Lastly, check readyState
-        if (video.readyState >= 2) return true; // HAVE_CURRENT_DATA
-      } catch {
-        // ignore
-      }
-      return false;
-    };
-
-    // Handler for built-in canplay/canplaythrough events
-    const onCanPlay = () => {
-      // If browser can play, it should be able to paint a frame
-      markReady();
-    };
-
-    // Use loadedmetadata to know duration exists and try play
     const onLoadedMeta = async () => {
-      // Try short play -> pause to force paint
       const ok = await attemptPlayShort(150);
-      if (!ok) {
-        // if autoplay blocked, but we have enough buffered data, show immediately
-        if (canRenderFirstFrame()) {
-          markReady();
-        }
-        // otherwise wait for canplay/progress or a user gesture
-      }
+      if (!ok && canRenderFirstFrame()) markReady();
     };
 
-    // Touch unlock fallback (for iOS / browsers that block autoplay)
+    const onCanPlay = () => markReady();
+    const onProgress = () => {
+      if (canRenderFirstFrame()) markReady();
+    };
+
     const onUserGesture = async () => {
-      // try to force a frame on user gesture
       const ok = await attemptPlayShort(100);
       if (ok) markReady();
       window.removeEventListener("touchstart", onUserGesture);
       window.removeEventListener("click", onUserGesture);
     };
 
-    // Progress event: if buffering enough, mark ready (useful in Chrome incognito)
-    const onProgress = () => {
-      if (canRenderFirstFrame()) {
-        markReady();
-      }
-    };
-
-    // Hook events
     video.addEventListener("loadedmetadata", onLoadedMeta);
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("progress", onProgress);
@@ -136,7 +119,6 @@ export default function VideoScrubSection({ t }: Props) {
     window.addEventListener("touchstart", onUserGesture, { once: true });
     window.addEventListener("click", onUserGesture, { once: true });
 
-    // If the video is already in a state to render (rare), mark ready
     if (canRenderFirstFrame()) markReady();
 
     return () => {
@@ -153,18 +135,25 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* Poster image shown until video is ready */}
+        {/* Poster shown until video is ready */}
         <img
-          src={PosterImage}
+          src={POSTER_DESKTOP}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
+            isReady ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+        />
+        <img
+          src={POSTER_MOBILE}
+          alt="Metabridge background"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         />
 
-        {/* Video fades in once ready. Keep muted & playsInline */}
+        {/* Desktop Video */}
         <video
-          ref={videoRef}
+          ref={desktopVideoRef}
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 hidden md:block ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
@@ -172,12 +161,13 @@ export default function VideoScrubSection({ t }: Props) {
           muted
           playsInline
           disablePictureInPicture
-          poster={PosterImage}
-          src={MetabridgeVideo}
+          poster={POSTER_DESKTOP}
+          src={DESKTOP_VIDEO}
         />
 
-    <video
-          ref={videoRef}
+        {/* Mobile Video */}
+        <video
+          ref={mobileVideoRef}
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
@@ -185,11 +175,11 @@ export default function VideoScrubSection({ t }: Props) {
           muted
           playsInline
           disablePictureInPicture
-          poster={PosterMobileImage}
-          src={MetabridgeVideoMobile}
+          poster={POSTER_MOBILE}
+          src={MOBILE_VIDEO}
         />
 
-        {/* Overlay text */}
+        {/* Overlay Text */}
         <div
           className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
           style={{ zIndex: 2, pointerEvents: "none" }}
