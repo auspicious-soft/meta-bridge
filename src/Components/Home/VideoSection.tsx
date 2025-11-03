@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
-const POSTER_DESKTOP = "/metabridge-video-poster";
+const POSTER_DESKTOP = "/metabridge-video-poster.png";
 
 type Props = {
   t: {
