@@ -156,7 +156,7 @@ export default function VideoScrubSection({ t }: Props) {
         <img
           src={POSTER_DESKTOP}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         />
