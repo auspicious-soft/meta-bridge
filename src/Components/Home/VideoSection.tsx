@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import MetabridgeVideo from "../../Assets/metabridge-video-new.mp4";
+import PosterImage from "../../Assets/metabridge-video-poster.png"; 
 import ContactButton from "../ContactButton";
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
 export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -43,25 +45,24 @@ export default function VideoScrubSection({ t }: Props) {
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    // ✅ Force first frame to render by playing a tiny part
     const showFirstFrame = async () => {
       try {
-        video.currentTime = 0;
         await video.play();
         setTimeout(() => {
           video.pause();
           video.currentTime = 0;
-        }, 150); // play 0.15s to force rendering
-      } catch (err) {
-        // some mobile browsers block autoplay – handled below
+          setIsReady(true);
+        }, 150);
+      } catch {
+        // autoplay blocked, wait for user gesture
       }
     };
 
-    // ✅ Unlock playback for iOS Safari if autoplay blocked
     const unlockVideo = () => {
       video.play().then(() => {
         video.pause();
         video.currentTime = 0;
+        setIsReady(true);
       });
       window.removeEventListener("touchstart", unlockVideo);
     };
@@ -80,22 +81,33 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* 🖼️ Static image fallback until video ready */}
+        <img
+          src={PosterImage}
+          alt="Metabridge background"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+            isReady ? "opacity-0" : "opacity-100"
+          }`}
+        />
+
+        {/* 🎥 Video fades in once loaded */}
         <video
           ref={videoRef}
-          className="w-full h-full object-cover pointer-events-none"
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
+            isReady ? "opacity-100" : "opacity-0"
+          }`}
           preload="auto"
           muted
           playsInline
           disablePictureInPicture
+          poster={PosterImage} // browser fallback poster
           src={MetabridgeVideo}
         />
 
+        {/* Overlay Text */}
         <div
           className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
-          style={{
-            zIndex: 2,
-            pointerEvents: "none",
-          }}
+          style={{ zIndex: 2, pointerEvents: "none" }}
         >
           <div className="max-w-[900px] mx-auto text-center pointer-events-auto">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
