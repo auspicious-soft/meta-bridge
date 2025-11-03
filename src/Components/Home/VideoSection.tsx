@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
-const Mobile_VIDEO = "/metabridge-video-mobile-optimized.mp4";
 const POSTER_DESKTOP = "/metabridge-video-poster.png";
-const MOBILE_DESKTOP = "/metabridge-poster-mobile.png";
 
 type Props = {
   t: {
@@ -158,14 +156,7 @@ export default function VideoScrubSection({ t }: Props) {
         <img
           src={POSTER_DESKTOP}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block  ${
-            isReady ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        />
-         <img
-          src={MOBILE_DESKTOP}
-          alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         />
@@ -173,7 +164,7 @@ export default function VideoScrubSection({ t }: Props) {
         {/* Video fades in once ready. Keep muted & playsInline */}
         <video
           ref={videoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 hidden md:block ${
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           muted
@@ -183,18 +174,7 @@ export default function VideoScrubSection({ t }: Props) {
           poster={POSTER_DESKTOP}
           src={DESKTOP_VIDEO}
         />
-          <video
-          ref={videoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
-            isReady ? "opacity-100" : "opacity-0"
-          }`}
-          muted
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          poster={MOBILE_DESKTOP}
-          src={Mobile_VIDEO}
-        />
+
         
         
 
