@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import MetabridgeVideo from "../../Assets/metabridge-video-c.mp4";
-import PosterImage from "../../Assets/metabridge-video-poster.png"; // still image
+import MetabridgeVideoMobile from "../../Assets/metabridge-video-mobile.mp4";
+import PosterImage from "../../Assets/metabridge-video-poster.png"; 
+import PosterMobileImage from "../../Assets/metabridge-poster-mobile.png"; // still image
 import ContactButton from "../ContactButton";
 
 type Props = {
@@ -163,7 +165,7 @@ export default function VideoScrubSection({ t }: Props) {
         {/* Video fades in once ready. Keep muted & playsInline */}
         <video
           ref={videoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 hidden md:block ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           preload="auto"
@@ -172,6 +174,19 @@ export default function VideoScrubSection({ t }: Props) {
           disablePictureInPicture
           poster={PosterImage}
           src={MetabridgeVideo}
+        />
+
+    <video
+          ref={videoRef}
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
+            isReady ? "opacity-100" : "opacity-0"
+          }`}
+          preload="auto"
+          muted
+          playsInline
+          disablePictureInPicture
+          poster={PosterMobileImage}
+          src={MetabridgeVideoMobile}
         />
 
         {/* Overlay text */}
