@@ -1,5 +1,4 @@
-import {  useLayoutEffect, useRef, useState } from "react";
-import ContactButton from "../ContactButton";
+import { useLayoutEffect, useRef, useState } from "react";
 
 // ✅ Use public folder paths for better performance (CDN / caching)
 const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
@@ -16,11 +15,19 @@ type Props = {
   };
 };
 
+// Mock ContactButton for demo
+const ContactButton = ({ label }: { label: string }) => (
+  <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors">
+    {label}
+  </button>
+);
+
 export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const desktopVideoRef = useRef<HTMLVideoElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const isReadyRef = useRef(false); // ✅ Add ref to prevent re-renders
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -32,12 +39,11 @@ export default function VideoScrubSection({ t }: Props) {
     if (!container || !video) return;
 
     let rafId: number | null = null;
-    let didMarkReady = false;
 
     const markReady = () => {
-      if (didMarkReady) return;
-      didMarkReady = true;
-     setIsReady((prev) => prev || true);
+      if (isReadyRef.current) return; // ✅ Check ref first
+      isReadyRef.current = true;
+      setIsReady(true); // ✅ Only set state once
     };
 
     const updateVideoTime = () => {
@@ -130,84 +136,76 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
       window.removeEventListener("click", onUserGesture);
     };
-  }, [isReady]);
+  }, []); // ✅ Remove isReady from dependency array
 
- return (
-  <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
-    <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+  return (
+    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
+      <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* ✅ Keep gradient visible until video fully ready */}
+        {!isReady && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
+        )}
 
-      {/* ✅ Keep gradient visible until video fully ready */}
-      {!isReady && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
-      )}
+        {/* ✅ Posters */}
+        <img
+          src={POSTER_DESKTOP}
+          alt="Metabridge background"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
+            isReady ? "opacity-0" : "opacity-100"
+          }`}
+        />
+        <img
+          src={POSTER_MOBILE}
+          alt="Metabridge background"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
+            isReady ? "opacity-0" : "opacity-100"
+          }`}
+        />
 
-      {/* ✅ Posters */}
-      <img
-        src={POSTER_DESKTOP}
-        alt="Metabridge background"
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
-          isReady ? "opacity-0" : "opacity-100"
-        }`}
-      />
-      <img
-        src={POSTER_MOBILE}
-        alt="Metabridge background"
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
-          isReady ? "opacity-0" : "opacity-100"
-        }`}
-      />
+        {/* ✅ Video layers - fade in only once */}
+        <video
+          ref={desktopVideoRef}
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block transition-opacity duration-500 ${
+            isReady ? "opacity-100" : "opacity-0"
+          }`}
+          preload="auto"
+          muted
+          playsInline
+          disablePictureInPicture
+          poster={POSTER_DESKTOP}
+          src={DESKTOP_VIDEO}
+        />
 
-      {/* ✅ Video layers - fade in only once */}
-<video
-  ref={desktopVideoRef}
-  className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block video-layer ${
-    isReady ? "opacity-100" : "opacity-0"
-  }`}
-  preload="auto"
-  muted
-  playsInline
-  disablePictureInPicture
-  poster={POSTER_DESKTOP}
-  src={DESKTOP_VIDEO}
-/>
+        <video
+          ref={mobileVideoRef}
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden transition-opacity duration-500 ${
+            isReady ? "opacity-100" : "opacity-0"
+          }`}
+          preload="auto"
+          muted
+          playsInline
+          disablePictureInPicture
+          poster={POSTER_MOBILE}
+          src={MOBILE_VIDEO}
+        />
 
-<video 
-  ref={mobileVideoRef}
-  className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden video-layer ${
-    isReady ? "opacity-100" : "opacity-0"
-  }`}
-  preload="auto"
-  muted
-  playsInline 
-  disablePictureInPicture
-  poster={POSTER_MOBILE}
-  src={MOBILE_VIDEO}
-/>
-
-      {/* ✅ Overlay text fixed above video layer */}
-      <div
-        className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6"
-      >
-        <div className="max-w-[900px] mx-auto text-center">
-          <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
-            {t.heroSubTitle} ss
-          </h6>
-          <h1 className="text-[#f1f5f8] text-[32px] md:text-[55px] font-medium leading-[42px] md:leading-[74px]">
-            {t.heroTitle}
-          </h1>
-          <p className="text-[#c0d5df] text-sm md:text-lg mt-3 leading-[24px] md:leading-[30px]">
-            {t.heroDesc}
-          </p>
-          <div className="flex justify-center mt-8">
-            <ContactButton label={t.contactUsLabel} />
+        {/* ✅ Overlay text fixed above video layer */}
+        <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
+          <div className="max-w-[900px] mx-auto text-center">
+            <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
+              {t.heroSubTitle}
+            </h6>
+            <h1 className="text-[#f1f5f8] text-[32px] md:text-[55px] font-medium leading-[42px] md:leading-[74px]">
+              {t.heroTitle}
+            </h1>
+            <p className="text-[#c0d5df] text-sm md:text-lg mt-3 leading-[24px] md:leading-[30px]">
+              {t.heroDesc}
+            </p>
+            <div className="flex justify-center mt-8">
+              <ContactButton label={t.contactUsLabel} />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
-
-}
-
-
-
+  );}
