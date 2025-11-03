@@ -4,7 +4,7 @@ import ImagePinnedSection from "../Components/Home/ImagePinnedSection";
 import MetaBridgeGridSection from "../Components/Home/MetaBridgeGridSection";
 import TabSection from "../Components/Home/TabSection";
 import TailorMadeSection from "../Components/Home/TailorMadeSection";
-import VideoSection from "../Components/Home/VideoSection";
+// import VideoSection from "../Components/Home/VideoSection";
 
 import useDetectCountry from "../Hooks/useDetectCountry";
 import translations from "../translations";
@@ -17,7 +17,7 @@ const Home = () => {
   
   return (
     <>
-      <VideoSection t={t} />
+      {/* <VideoSection t={t} /> */}
       <ChooseMetabridgeSection t={t} />
       <TabSection t={t} />
       <EveryStep t={t} />
