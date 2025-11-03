@@ -178,7 +178,6 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
           // preload="auto"
           preload="auto"   // changes 
-          crossOrigin="anonymous" // changes
           muted
           playsInline
           disablePictureInPicture
