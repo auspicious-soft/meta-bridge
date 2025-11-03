@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const DESKTOP_VIDEO = "/metabridge-video-optimized.mp4";
+const DESKTOP_VIDEO = "/metabridge-video-mobile-optimized.mp4";
 const POSTER_DESKTOP = "/metabridge-video-poster.png";
 
 type Props = {
@@ -169,7 +169,7 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
           muted
           playsInline
-          preload="true"
+          preload="auto"
           disablePictureInPicture
           poster={POSTER_DESKTOP}
           src={DESKTOP_VIDEO}
