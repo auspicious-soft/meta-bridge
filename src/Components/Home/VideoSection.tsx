@@ -132,83 +132,81 @@ export default function VideoScrubSection({ t }: Props) {
     };
   }, [isReady]);
 
-  return (
-    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
-      <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {!isReady && (
-<div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]">
-</div>
+ return (
+  <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
+    <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
 
+      {/* ✅ Keep gradient visible until video fully ready */}
+      {!isReady && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
+      )}
 
-  )}
-        {/* Poster shown until video is ready */}
-        <img
-          src={POSTER_DESKTOP}
-          alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
-            isReady ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        />
-        <img
-          src={POSTER_MOBILE}
-          alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
-            isReady ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        />
+      {/* ✅ Posters */}
+      <img
+        src={POSTER_DESKTOP}
+        alt="Metabridge background"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 hidden md:block ${
+          isReady ? "opacity-0" : "opacity-100"
+        }`}
+      />
+      <img
+        src={POSTER_MOBILE}
+        alt="Metabridge background"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 block md:hidden ${
+          isReady ? "opacity-0" : "opacity-100"
+        }`}
+      />
 
-        {/* Desktop Video */}
-        <video
-          ref={desktopVideoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 hidden md:block ${
-            isReady ? "opacity-100" : "opacity-0"
-          }`}
-          preload="auto"
-          muted
-          playsInline
-          disablePictureInPicture
-          poster={POSTER_DESKTOP}
-          src={DESKTOP_VIDEO}
-        />
+      {/* ✅ Video layers - fade in only once */}
+      <video
+        ref={desktopVideoRef}
+        className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block transition-opacity duration-700 ${
+          isReady ? "opacity-100" : "opacity-0"
+        }`}
+        preload="auto"
+        muted
+        playsInline
+        disablePictureInPicture
+        poster={POSTER_DESKTOP}
+        src={DESKTOP_VIDEO}
+      />
 
-        {/* Mobile Video */}
-        <video
-          ref={mobileVideoRef}
-          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 block md:hidden ${
-            isReady ? "opacity-100" : "opacity-0"
-          }`}
-          // preload="auto"
-          preload="auto"   // changes 
-          muted
-          playsInline
-          disablePictureInPicture
-          poster={POSTER_MOBILE}
-          src={MOBILE_VIDEO}
-        />
+      <video
+        ref={mobileVideoRef}
+        className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden transition-opacity duration-700 ${
+          isReady ? "opacity-100" : "opacity-0"
+        }`}
+        preload="auto"
+        muted
+        playsInline
+        disablePictureInPicture
+        poster={POSTER_MOBILE}
+        src={MOBILE_VIDEO}
+      />
 
-        {/* Overlay Text */}
-        <div
-          className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
-          style={{ zIndex: 2, pointerEvents: "none" }}
-        >
-          <div className="max-w-[900px] mx-auto text-center pointer-events-auto">
-            <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
-              {t.heroSubTitle}
-            </h6>
-            <h1 className="text-[#f1f5f8] text-[32px] md:text-[55px] font-medium leading-[42px] md:leading-[74px]">
-              {t.heroTitle}
-            </h1>
-            <p className="text-[#c0d5df] text-sm md:text-lg mt-3 leading-[24px] md:leading-[30px]">
-              {t.heroDesc}
-            </p>
-            <div className="flex justify-center mt-8">
-              <ContactButton label={t.contactUsLabel} />
-            </div>
+      {/* ✅ Overlay text fixed above video layer */}
+      <div
+        className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6"
+      >
+        <div className="max-w-[900px] mx-auto text-center">
+          <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
+            {t.heroSubTitle}
+          </h6>
+          <h1 className="text-[#f1f5f8] text-[32px] md:text-[55px] font-medium leading-[42px] md:leading-[74px]">
+            {t.heroTitle}
+          </h1>
+          <p className="text-[#c0d5df] text-sm md:text-lg mt-3 leading-[24px] md:leading-[30px]">
+            {t.heroDesc}
+          </p>
+          <div className="flex justify-center mt-8">
+            <ContactButton label={t.contactUsLabel} />
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
 
 
