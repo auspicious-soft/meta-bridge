@@ -13,7 +13,7 @@ type Props = {
     heroTitle: string;
     heroDesc: string;
     contactUsLabel: string;
-  };
+  }; 
 };
 
 export default function VideoScrubSection({ t }: Props) {
@@ -21,6 +21,14 @@ export default function VideoScrubSection({ t }: Props) {
   const desktopVideoRef = useRef<HTMLVideoElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+  // ✅ Detect on mount (avoids SSR mismatch)
+  if (typeof window !== "undefined") {
+    setIsMobile(window.innerWidth < 768);
+  }
+}, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -133,8 +141,8 @@ export default function VideoScrubSection({ t }: Props) {
   }, [isReady]);
 
  return (
-  <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
-    <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+  <div ref={containerRef} className="relative will-change-transform" style={{ height: "300vh", transform: "translateZ(0)" }}>
+    <div className="sticky top-0 h-screen w-full overflow-hidden bg-black will-change-transform">
 
       {/* ✅ Keep gradient visible until video fully ready */}
       {!isReady && (
@@ -171,10 +179,10 @@ export default function VideoScrubSection({ t }: Props) {
   src={DESKTOP_VIDEO}
 />
 
-<video 
+<video
   ref={mobileVideoRef}
   className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden video-layer ${
-    isReady ? "opacity-100" : "opacity-0"
+    isMobile ? "opacity-100" : isReady ? "opacity-100" : "opacity-0"
   }`}
   preload="auto"
   muted
