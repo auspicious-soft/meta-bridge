@@ -28,7 +28,7 @@ export default function VideoScrubSection({ t }: Props) {
     let currentTime = 0;
     let isUserActivated = false;
 
-    // Smooth interpolation (lerp)
+    // ✅ Linear interpolation helper (smooth catching up)
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
     const markReady = () => setIsReady(true);
@@ -49,13 +49,13 @@ export default function VideoScrubSection({ t }: Props) {
       // ✅ Compute target time based on scroll progress
       targetTime = progress * (video.duration || 0);
 
-      // ✅ Smooth interpolation between currentTime & targetTime
-      currentTime = lerp(currentTime, targetTime, 0.08);
+      // ✅ Faster responsiveness (0.18 = quicker catch-up)
+      currentTime = lerp(currentTime, targetTime, 0.18); 
 
       if (Math.abs(video.currentTime - currentTime) > 0.01) {
         try {
           video.currentTime = currentTime;
-        } catch (err) {
+        } catch {
           // Chrome may block before play gesture
         }
       }
@@ -71,8 +71,8 @@ export default function VideoScrubSection({ t }: Props) {
         video.pause(); // forces Chrome to decode frames
         video.currentTime = 0;
         markReady();
-      } catch (err) {
-        console.warn("Autoplay blocked, will activate on user gesture.");
+      } catch {
+        console.warn("Autoplay blocked, waiting for user gesture...");
       }
     };
 
@@ -89,7 +89,6 @@ export default function VideoScrubSection({ t }: Props) {
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
-    // Start loop right away
     rafId = requestAnimationFrame(updateVideoTime);
 
     return () => {
@@ -116,7 +115,7 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Single video works on Chrome, Safari, Mobile */}
+        {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
@@ -130,7 +129,7 @@ export default function VideoScrubSection({ t }: Props) {
           src={VIDEO_SRC}
         />
 
-        {/* ✅ Overlay content */}
+        {/* ✅ Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
@@ -150,4 +149,4 @@ export default function VideoScrubSection({ t }: Props) {
       </div>
     </div>
   );
-} 
+}
