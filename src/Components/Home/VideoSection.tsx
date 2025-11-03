@@ -136,10 +136,8 @@ export default function VideoScrubSection({ t }: Props) {
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {!isReady && (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0a0a0a]">
-      <div className="w-3/4 h-1/2 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-pulse rounded-2xl"></div>
-      {/* Optional text message */}
-      
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0b1016]">
+      <div className="w-3/4 h-1/2 bg-[#0b1016] animate-pulse rounded-2xl"></div>      
     </div>
   )}
         {/* Poster shown until video is ready */}
