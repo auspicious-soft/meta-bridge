@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import MetabridgeVideo from "../../Assets/metabridge-video-new.mp4";
+import MetabridgeVideo from "../../Assets/metabridge-video-c.mp4";
 import PosterImage from "../../Assets/metabridge-video-poster.png"; // still image
 import ContactButton from "../ContactButton";
 
