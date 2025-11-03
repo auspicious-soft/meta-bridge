@@ -147,17 +147,20 @@ export default function PinnedScrollSection({ t }: everyProps) {
 
                                 {/* White Box Between Words */}
                              <span
-    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl"
+    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl will-change-transform"
     style={{
-        width: '100px',
-        height: '50px',
-        fontSize: '6px',
-        transform: `scale(${1 + eased * (maxScale / 5)})`, // smoother, GPU-accelerated
-        transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease-out',
+        width: `${100 * boxScale}px`,
+        height: `${50 * boxScale}px`,
+        fontSize: `${6 * boxScale}px`,
+        transition: 'transform 0.25s ease-out, opacity 0.25s ease-out',
+        transform: `translateZ(0) scale(${1 + eased * 0.02})`, // adds smooth GPU hint without changing scale logic
         opacity: boxOpacity,
         WebkitFontSmoothing: 'antialiased',
         textRendering: 'optimizeLegibility',
-        willChange: 'transform, opacity',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        perspective: 1000,
+        willChange: 'transform, opacity, width, height, font-size'
     }}
 >
 
