@@ -158,31 +158,31 @@ export default function VideoScrubSection({ t }: Props) {
       />
 
       {/* ✅ Video layers - fade in only once */}
-      <video
-        ref={desktopVideoRef}
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block transition-opacity duration-700 ${
-          isReady ? "opacity-100" : "opacity-0"
-        }`}
-        preload="auto"
-        muted
-        playsInline
-        disablePictureInPicture
-        poster={POSTER_DESKTOP}
-        src={DESKTOP_VIDEO}
-      />
+<video
+  ref={desktopVideoRef}
+  className={`absolute inset-0 w-full h-full object-cover pointer-events-none hidden md:block video-layer ${
+    isReady ? "opacity-100" : "opacity-0"
+  }`}
+  preload="auto"
+  muted
+  playsInline
+  disablePictureInPicture
+  poster={POSTER_DESKTOP}
+  src={DESKTOP_VIDEO}
+/>
 
-      <video
-        ref={mobileVideoRef}
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden transition-opacity duration-700 ${
-          isReady ? "opacity-100" : "opacity-0"
-        }`}
-        preload="auto"
-        muted
-        playsInline
-        disablePictureInPicture
-        poster={POSTER_MOBILE}
-        src={MOBILE_VIDEO}
-      />
+<video 
+  ref={mobileVideoRef}
+  className={`absolute inset-0 w-full h-full object-cover pointer-events-none block md:hidden video-layer ${
+    isReady ? "opacity-100" : "opacity-0"
+  }`}
+  preload="auto"
+  muted
+  playsInline
+  disablePictureInPicture
+  poster={POSTER_MOBILE}
+  src={MOBILE_VIDEO}
+/>
 
       {/* ✅ Overlay text fixed above video layer */}
       <div
