@@ -10,7 +10,7 @@ type everyProps = {
         everyStepTitleMobile: string;
         everyStepTitleBoxFirst: string;
         everyStepTitleBoxLast: string;
-        
+
         everyStepWhiteBoxTitle: string;
         everyStepWhiteBoxDesc: string;
 
@@ -99,9 +99,9 @@ export default function PinnedScrollSection({ t }: everyProps) {
     const eased = ease(scrollProgress);
 
     const boxScale = 1 + (eased * maxScale);
-    const boxOpacity = scrollProgress < 0.7 ? 1 : Math.max(0, 1 - ((scrollProgress - 0.7) / 0.18));
+    const boxOpacity = scrollProgress < 0.7 ? 1 : Math.max(0, 1 - ((scrollProgress - 0.7) / 0.18)); 
     const contentOpacity = scrollProgress > 0.62 ? Math.min(1, (scrollProgress - 0.6) / 0.22) : 0;
-    const titleOpacity = scrollProgress < 0.32 ? 1 : Math.max(0, 1 - ((scrollProgress - 0.32) / 0.24));
+    const titleOpacity = scrollProgress < 0.32 ? 1 : Math.max(0, 1 - ((scrollProgress - 0.32) / 0.24)); 
     const bgWhite = scrollProgress > 1;
 
     const contentPointerEvents = contentOpacity > 0.05 ? 'auto' : 'none';
@@ -146,23 +146,23 @@ export default function PinnedScrollSection({ t }: everyProps) {
                                 <span className="hidden md:block">{t.everyStepTitleLeft}</span>
 
                                 {/* White Box Between Words */}
-                             <span
-    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl will-change-transform"
-    style={{
-        width: `${100 * boxScale}px`,
-        height: `${50 * boxScale}px`,
-        fontSize: `${6 * boxScale}px`,
-        transition: 'transform 0.25s ease-out, opacity 0.25s ease-out',
-        transform: `translateZ(0) scale(${1 + eased * 0.02})`, // adds smooth GPU hint without changing scale logic
-        opacity: boxOpacity,
-        WebkitFontSmoothing: 'antialiased',
-        textRendering: 'optimizeLegibility',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
-        perspective: 1000,
-        willChange: 'transform, opacity, width, height, font-size'
-    }}
->
+                                <span
+                                    className="inline-block bg-[#f1f5f8] rounded-lg shadow-2xl will-change-transform"
+                                    style={{
+                                        width: `${100 * boxScale}px`,
+                                        height: `${50 * boxScale}px`,
+                                        fontSize: `${6 * boxScale}px`,
+                                        transition: 'transform 0.25s ease-out, opacity 0.25s ease-out',
+                                        transform: `translateZ(0) scale(${1 + eased * 0.02})`, // adds smooth GPU hint without changing scale logic
+                                        opacity: boxOpacity,
+                                        WebkitFontSmoothing: 'antialiased',
+                                        textRendering: 'optimizeLegibility',
+                                        backfaceVisibility: 'hidden',
+                                        WebkitBackfaceVisibility: 'hidden',
+                                        perspective: 1000,
+                                        willChange: 'transform, opacity, width, height, font-size'
+                                    }}
+                                >
 
                                     <div className="w-full h-full flex items-center justify-center p-3">
                                         <div className="text-gray-900 text-center">
@@ -171,8 +171,6 @@ export default function PinnedScrollSection({ t }: everyProps) {
                                         </div>
                                     </div>
                                 </span>
-
-
                                 <span className="hidden md:block">{t.everyStepTitleRight}</span>
                             </h2>
                         </motion.div>
