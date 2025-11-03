@@ -166,12 +166,13 @@ export default function VideoScrubSection({ t }: Props) {
           className={`w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
-          muted
-          playsInline
-          disablePictureInPicture
-          poster={PosterImage}
-          src={MetabridgeVideo}
+  preload="auto"
+  playsInline
+  muted
+  loop
+  poster={PosterImage}
+  src={MetabridgeVideo}
+  crossOrigin="anonymous"
         />
 
         {/* Overlay text */}
