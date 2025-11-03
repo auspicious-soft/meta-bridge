@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import MetabridgeVideo from "../../Assets/metabridge-video-new.mp4";
 import ContactButton from "../ContactButton";
 
@@ -14,7 +14,6 @@ type Props = {
 export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -22,7 +21,6 @@ export default function VideoScrubSection({ t }: Props) {
     if (!video || !container) return;
 
     let rafId: number | null = null;
-    let lastScrollY = 0;
 
     const updateVideoTime = () => {
       if (!video || video.readyState < 2) return;
@@ -31,7 +29,6 @@ export default function VideoScrubSection({ t }: Props) {
       const scrollProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
       const targetTime = scrollProgress * video.duration;
 
-      // Smooth transition
       const diff = targetTime - video.currentTime;
       if (Math.abs(diff) > 0.02) {
         video.currentTime += diff * 0.2;
@@ -46,36 +43,32 @@ export default function VideoScrubSection({ t }: Props) {
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    const handleLoaded = () => {
-      setIsVideoLoaded(true);
-
-      // ✅ Force the first frame to render
+    // ✅ Ensure first frame is visible immediately
+    const showFirstFrame = () => {
       try {
         video.currentTime = 0;
         video.play().then(() => {
           video.pause();
         });
       } catch {}
-      updateVideoTime();
     };
 
-    // ✅ Autoplay unlock for iOS
+    // ✅ Unlock autoplay on iOS
     const unlockVideo = () => {
       video.play().then(() => {
         video.pause();
         video.currentTime = 0;
-        setIsVideoLoaded(true);
       });
       window.removeEventListener("touchstart", unlockVideo);
     };
-    window.addEventListener("touchstart", unlockVideo, { once: true });
 
-    video.addEventListener("loadeddata", handleLoaded);
+    window.addEventListener("touchstart", unlockVideo, { once: true });
+    video.addEventListener("loadeddata", showFirstFrame);
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       cancelAnimationFrame(rafId ?? 0);
-      video.removeEventListener("loadeddata", handleLoaded);
+      video.removeEventListener("loadeddata", showFirstFrame);
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
@@ -83,6 +76,7 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* ✅ Video always visible */}
         <video
           ref={videoRef}
           className="w-full h-full object-cover pointer-events-none"
@@ -93,13 +87,7 @@ export default function VideoScrubSection({ t }: Props) {
           src={MetabridgeVideo}
         />
 
-        {!isVideoLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black">
-            <div className="text-white text-xl">Loading video...</div>
-          </div>
-        )}
-
-        {/* ✅ Remove will-change to stop flicker */}
+        {/* ✅ Text overlay (no flicker tweaks) */}
         <div
           className="absolute inset-0 flex flex-col justify-center items-center pt-[77px] px-6"
           style={{
