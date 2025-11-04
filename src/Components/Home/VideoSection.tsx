@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/metabridge-video-14.mp4";
+const VIDEO_SRC = "/metabridge-video-optimized.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
 
 type Props = {
@@ -17,73 +17,62 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    // Detect mobile devices
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || 
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      );
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
 
-    let rafId: number;
-    let currentVideoTime = 0;
+    let rafId: number | null = null;
+    let targetTime = 0;
+    let currentTime = 0;
     let isUserActivated = false;
+
+    // ✅ Linear interpolation helper (smooth catching up)
+    const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
     const markReady = () => setIsReady(true);
 
-    // --- Fixed animation loop for smooth bidirectional scrolling ---
     const updateVideoTime = () => {
-      if (!video || video.readyState < 2 || !video.duration) {
+      if (!video || video.readyState < 2) {
         rafId = requestAnimationFrame(updateVideoTime);
         return;
       }
 
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
+      const progress = Math.min(
+        1,
+        Math.max(0, scrollTop / Math.max(1, scrollRange))
+      );
 
-      // Calculate target time based on scroll position
-      const targetTime = progress * video.duration;
+      // ✅ Compute target time based on scroll progress
+      targetTime = progress * (video.duration || 0);
 
-      // Smooth interpolation that works in both directions
-      const distance = targetTime - currentVideoTime;
-      const smoothingFactor = isMobile ? 0.25 : 0.2;
-      currentVideoTime += distance * smoothingFactor;
+      // ✅ Faster responsiveness (0.18 = quicker catch-up)
+      currentTime = lerp(currentTime, targetTime, 0.18); 
 
-      // Update video time
-      if (Math.abs(video.currentTime - currentVideoTime) > 0.016) {
+      if (Math.abs(video.currentTime - currentTime) > 0.01) {
         try {
-          video.currentTime = currentVideoTime;
+          video.currentTime = currentTime;
         } catch {
-          /* ignore Chrome pre-play restriction */
+          // Chrome may block before play gesture
         }
       }
 
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    // --- Chrome autoplay unlock ---
     const tryActivateVideo = async () => {
       if (isUserActivated) return;
       isUserActivated = true;
       try {
         await video.play();
-        video.pause();
+        video.pause(); // forces Chrome to decode frames
         video.currentTime = 0;
         markReady();
       } catch {
-        console.warn("Autoplay blocked; waiting for user gesture…");
+        console.warn("Autoplay blocked, waiting for user gesture...");
       }
     };
 
@@ -93,51 +82,46 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
-    // --- Start loop ---
-    rafId = requestAnimationFrame(updateVideoTime);
-    
-    if (isMobile) {
-      video.addEventListener("canplaythrough", markReady);
-    } else {
-      video.addEventListener("loadeddata", markReady);
-    }
-    
+    video.addEventListener("loadeddata", markReady);
+    window.addEventListener("scroll", () => {
+      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
+    });
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
+    rafId = requestAnimationFrame(updateVideoTime);
+
     return () => {
-      cancelAnimationFrame(rafId);
-      video.removeEventListener("loadeddata", markReady);
-      video.removeEventListener("canplaythrough", markReady);
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
-  }, [isMobile]);
+  }, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* Gradient background while loading */}
+        {/* ✅ Gradient background while loading */}
         {!isReady && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
         )}
 
-        {/* Poster fallback */}
+        {/* ✅ Poster fallback */}
         <img
           src={POSTER_SRC}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1000ms] ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
             isReady ? "opacity-0" : "opacity-100"
           }`}
         />
 
-        {/* Video layer */}
+        {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload={isMobile ? "metadata" : "auto"}
+          preload="auto"
           muted
           playsInline
           disablePictureInPicture
@@ -145,7 +129,7 @@ export default function VideoScrubSection({ t }: Props) {
           src={VIDEO_SRC}
         />
 
-        {/* Overlay text */}
+        {/* ✅ Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
