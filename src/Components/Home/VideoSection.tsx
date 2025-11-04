@@ -169,8 +169,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/metabridge-video-14.mp4";
+const VIDEO_SRC = "/metabridge-video-optimized.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
+
+// IMPORTANT: For maximum compatibility, ensure your video is encoded with H.264 (video) and AAC (audio).
+// High resolution or very high bitrate videos can cause performance issues on some devices, especially Safari.
+// Test with a lower-resolution version if you continue to see problems.
 
 type Props = {
   t: {
@@ -185,6 +189,7 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -193,90 +198,85 @@ export default function VideoScrubSection({ t }: Props) {
 
     let rafId: number;
     let targetProgress = 0;
-
-    // A simple lerp function
-    const lerp = (start: number, end: number, factor: number) => {
-      return start + (end - start) * factor;
-    };
+    let lastSeekTime = 0;
 
     const onScroll = () => {
-      // Calculate the raw scroll progress
+      // This function should be as fast as possible. It only calculates the target progress.
       const scrollTop = window.scrollY - container.offsetTop;
       const maxScroll = container.offsetHeight - window.innerHeight;
       targetProgress = Math.max(0, Math.min(1, scrollTop / maxScroll));
     };
 
     const updateVideo = () => {
-      if (video.readyState >= 4 && video.duration) { // Use readyState 4 (HAVE_ENOUGH_DATA)
-        // Directly map the target progress to video time
-        const targetTime = targetProgress * video.duration;
+      // Don't do anything if the video isn't ready or is currently seeking.
+      if (video.readyState < 4 || isSeeking) {
+        rafId = requestAnimationFrame(updateVideo);
+        return;
+      }
 
-        // Only update the video time if the difference is significant.
-        // This is the key to preventing the "stuck" feeling.
-        // It avoids spamming the video element with tiny, slow seek operations.
-        if (Math.abs(video.currentTime - targetTime) > 0.1) { // 0.1 second threshold
-          try {
-            video.currentTime = targetTime;
-          } catch (error) {
-            // Ignore errors where the time is set outside the valid range
-            // which can happen during rapid scrolling
-          }
+      const targetTime = targetProgress * video.duration;
+
+      // Only seek if the time difference is significant and we haven't just seeked.
+      // The 0.15s threshold prevents tiny, inefficient seeks.
+      if (Math.abs(video.currentTime - targetTime) > 0.15 && targetTime !== lastSeekTime) {
+        try {
+          setIsSeeking(true); // Set our state to "seeking"
+          lastSeekTime = targetTime;
+          video.currentTime = targetTime;
+        } catch (error) {
+          console.error("Error seeking video:", error);
+          setIsSeeking(false); // Ensure we can try again if it fails
         }
       }
+
       rafId = requestAnimationFrame(updateVideo);
     };
 
-    const markReady = () => {
+    const onSeeked = () => {
+      // The browser has finished seeking. We can now seek again.
+      setIsSeeking(false);
+    };
+
+    const onLoadedData = () => {
       setIsReady(true);
-      // Once ready, set the initial time
-      if (video) {
-        video.currentTime = 0;
+      video.currentTime = 0; // Ensure it starts at the beginning
+    };
+
+    const activateVideo = async () => {
+      // A user gesture is required to start the video context.
+      // We play and then immediately pause to "unlock" the video element.
+      try {
+        await video.play();
+        video.pause();
+      } catch (error) {
+        console.warn("Video activation failed:", error);
       }
     };
 
-    const tryActivateVideo = async () => {
-      try {
-        // A more reliable way to "unlock" the video element
-        await video.play();
-        video.pause();
-        video.currentTime = 0;
-        markReady();
-      } catch (error) {
-        console.warn("Autoplay blocked. Awaiting user interaction.");
-        // Fallback: wait for a user click anywhere
-        const enableVideo = () => {
-          video.play().then(() => {
-            video.pause();
-            video.currentTime = 0;
-            markReady();
-          }).catch(console.warn);
-          window.removeEventListener("click", enableVideo);
-          window.removeEventListener("touchstart", enableVideo);
-        };
-        window.addEventListener("click", enableVideo, { once: true });
-        window.addEventListener("touchstart", enableVideo, { once: true });
-      }
-    };
+    // --- Event Listeners ---
+    window.addEventListener("scroll", onScroll, { passive: true });
+    video.addEventListener("seeked", onSeeked);
+    video.addEventListener("loadeddata", onLoadedData);
+    
+    // Activate video on the first user interaction with the component
+    container.addEventListener("click", activateVideo, { once: true });
 
     // Preload the video
     video.load();
 
-    video.addEventListener("loadeddata", markReady);
-    // Use passive listener for better scroll performance
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    // Start the animation loop
+    // Initial calculations and start the loop
+    onScroll();
     rafId = requestAnimationFrame(updateVideo);
 
-    // Attempt to activate the video on load
-    tryActivateVideo();
-
+    // --- Cleanup ---
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("scroll", onScroll);
-      video.removeEventListener("loadeddata", markReady);
+      video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("loadeddata", onLoadedData);
+      container.removeEventListener("click", activateVideo);
     };
-  }, []);
+  }, [isSeeking]); // Rerun effect if isSeeking state changes (not strictly necessary but good practice)
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
