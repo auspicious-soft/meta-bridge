@@ -1,19 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const DESKTOP_VIDEO_SRC = "/metabridge-video.mp4";
-const MOBILE_VIDEO_SRC = "/metabridge-video-mobile-optimized.mp4";
-const DESKTOP_POSTER_SRC = "/metabridge-video-poster.png";
-const MOBILE_POSTER_SRC = "/metabridge-poster-mobile.png";
-
-// ✅ Detect if mobile device
-const isMobileDevice = () => {
-  return (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    ) || window.innerWidth < 768
-  );
-};
+const VIDEO_SRC = "/metabridge-video-14.mp4";
+const POSTER_SRC = "/metabridge-video-poster.png"; 
 
 type Props = {
   t: {
@@ -28,86 +17,62 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
-  const [videoSrc, setVideoSrc] = useState(DESKTOP_VIDEO_SRC);
-  const [posterSrc, setPosterSrc] = useState(DESKTOP_POSTER_SRC);
 
-  // ✅ Set correct video & poster once on mount
-  useLayoutEffect(() => {
-    if (isMobileDevice()) {
-      setVideoSrc(MOBILE_VIDEO_SRC);
-      setPosterSrc(MOBILE_POSTER_SRC);
-    } else {
-      setVideoSrc(DESKTOP_VIDEO_SRC);
-      setPosterSrc(DESKTOP_POSTER_SRC);
-    }
-  }, []);
-
-  // ✅ Scroll-scrub logic
   useLayoutEffect(() => {
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
 
-    let rafId: number;
-    let scrollProgress = 0;
-    let targetProgress = 0;
+    let rafId: number | null = null;
+    let targetTime = 0;
     let currentTime = 0;
-    let lastTimeUpdate = 0;
     let isUserActivated = false;
 
+    // ✅ Linear interpolation helper (smooth catching up)
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
-    const onScroll = () => {
+    const markReady = () => setIsReady(true);
+
+    const updateVideoTime = () => {
+      if (!video || video.readyState < 2) {
+        rafId = requestAnimationFrame(updateVideoTime);
+        return;
+      }
+
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      const newProgress = Math.min(
+      const progress = Math.min(
         1,
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
-      targetProgress = newProgress;
-    };
 
-    const update = (timestamp: number) => {
-      const velocity = Math.abs(targetProgress - scrollProgress);
-      const smoothing =
-        velocity > 0.05 ? 0.25 : velocity > 0.01 ? 0.18 : 0.12;
+      // ✅ Compute target time based on scroll progress
+      targetTime = progress * (video.duration || 0);
 
-      scrollProgress = lerp(scrollProgress, targetProgress, smoothing);
+      // ✅ Faster responsiveness (0.18 = quicker catch-up)
+      currentTime = lerp(currentTime, targetTime, 0.18); 
 
-      if (video.readyState >= 2 && video.duration) {
-        const targetTime = scrollProgress * video.duration;
-        currentTime = lerp(currentTime, targetTime, 0.25);
-
-        if (timestamp - lastTimeUpdate > 16) {
-          const diff = Math.abs(video.currentTime - currentTime);
-          if (diff > 0.03) {
-            try {
-              video.currentTime = currentTime;
-              lastTimeUpdate = timestamp;
-            } catch {}
-          }
+      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+        try {
+          video.currentTime = currentTime;
+        } catch {
+          // Chrome may block before play gesture
         }
       }
 
-      rafId = requestAnimationFrame(update);
+      rafId = requestAnimationFrame(updateVideoTime);
     };
-
-    const markReady = () => setIsReady(true);
 
     const tryActivateVideo = async () => {
       if (isUserActivated) return;
       isUserActivated = true;
       try {
-        // 🔥 Pre-decode trick: play + pause 1 frame to prime decoder
         await video.play();
-        video.pause();
-        video.currentTime = 0.01;
-        await video.play();
-        video.pause();
+        video.pause(); // forces Chrome to decode frames
         video.currentTime = 0;
         markReady();
       } catch {
-        console.warn("Autoplay blocked until user gesture");
+        console.warn("Autoplay blocked, waiting for user gesture...");
       }
     };
 
@@ -118,54 +83,50 @@ export default function VideoScrubSection({ t }: Props) {
     };
 
     video.addEventListener("loadeddata", markReady);
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", () => {
+      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
+    });
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
-    onScroll();
-    rafId = requestAnimationFrame(update);
+    rafId = requestAnimationFrame(updateVideoTime);
 
     return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
-  }, [videoSrc]);
+  }, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {/* ✅ Gradient background while loading */}
         {!isReady && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#203446] to-[#0b1118]" />
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
         )}
 
         {/* ✅ Poster fallback */}
         <img
-          src={posterSrc}
+          src={POSTER_SRC}
           alt="Metabridge background"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
             isReady ? "opacity-0" : "opacity-100"
           }`}
         />
 
-        {/* ✅ Video source dynamically chosen */}
+        {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload={isMobileDevice() ? "metadata" : "auto"}
+          preload="auto"
           muted
           playsInline
           disablePictureInPicture
-          poster={posterSrc}
-          src={videoSrc}
-          style={{
-            transform: "translateZ(0)",
-            willChange: "auto",
-          }}
+          poster={POSTER_SRC}
+          src={VIDEO_SRC}
         />
 
         {/* ✅ Overlay text */}
