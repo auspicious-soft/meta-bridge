@@ -4,13 +4,6 @@ import ContactButton from "../ContactButton";
 const VIDEO_SRC = "/metabridge-video-optimized.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
 
-// Detect if mobile device
-const isMobile = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  ) || window.innerWidth < 768;
-};
-
 type Props = {
   t: {
     heroSubTitle: string;
@@ -33,31 +26,29 @@ useLayoutEffect(() => {
   let rafId: number;
   let scrollProgress = 0;
   let targetProgress = 0;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let currentTime = 0;
   let isUserActivated = false;
-  let canUpdate = false;
 
   const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
   const onScroll = () => {
-    if (!canUpdate) return; // 🚫 Don't update until user unlocks video
     const scrollTop = window.scrollY - container.offsetTop;
     const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
     targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
   };
 
   const update = () => {
-    if (!canUpdate) {
-      rafId = requestAnimationFrame(update);
-      return;
-    }
-
     const diff = Math.abs(targetProgress - scrollProgress);
+
+    // Faster smoothing only when big scroll changes
     const smoothFactor = diff > 0.1 ? 0.4 : 0.2;
     scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
 
     if (video.readyState >= 2 && video.duration) {
       const targetTime = scrollProgress * video.duration;
+
+      // Don’t hammer the decoder — only seek when we’re off by ≥ one frame
       if (Math.abs(video.currentTime - targetTime) > 0.03) {
         try {
           video.currentTime = targetTime;
@@ -72,24 +63,15 @@ useLayoutEffect(() => {
   const ensurePlayable = async () => {
     if (isUserActivated) return;
     isUserActivated = true;
-
     try {
       video.muted = true;
-      video.playsInline = true;
-      video.playbackRate = 1;
+      video.playbackRate = 0;
       await video.play();
-
-      // Let it decode first frame
-      await new Promise((r) => setTimeout(r, 200));
-
       video.pause();
       video.playbackRate = 0;
-
-      // ✅ Now allow updates & mark ready
-      canUpdate = true;
       setIsReady(true);
-    } catch (err) {
-      console.warn("Mobile autoplay blocked until user interacts", err);
+    } catch {
+      console.warn("Autoplay blocked, waiting for user gesture...");
     }
   };
 
@@ -105,11 +87,16 @@ useLayoutEffect(() => {
   window.addEventListener("touchstart", onUserGesture, { once: true });
 
   const onVisibilityChange = () => {
-    if (document.hidden) cancelAnimationFrame(rafId);
-    else rafId = requestAnimationFrame(update);
+    if (document.hidden) {
+      cancelAnimationFrame(rafId);
+    } else {
+      rafId = requestAnimationFrame(update);
+    }
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
+  // Kick off loop
+  onScroll();
   rafId = requestAnimationFrame(update);
 
   return () => {
@@ -121,7 +108,6 @@ useLayoutEffect(() => {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 }, []);
-
 
 
 
@@ -149,7 +135,7 @@ useLayoutEffect(() => {
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload={isMobile() ? "metadata" : "auto"}
+          preload="auto"
           muted
           playsInline
           disablePictureInPicture
