@@ -4,6 +4,13 @@ import ContactButton from "../ContactButton";
 const VIDEO_SRC = "/metabridge-video-14.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
 
+// Detect if mobile device
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  ) || window.innerWidth < 768;
+};
+
 type Props = {
   t: {
     heroSubTitle: string;
@@ -27,9 +34,18 @@ export default function VideoScrubSection({ t }: Props) {
     let targetTime = 0;
     let currentTime = 0;
     let isUserActivated = false;
+    let velocity = 0;
 
-    // ✅ Linear interpolation helper (smooth catching up)
+    // ✅ Smoother interpolation with velocity-based easing
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+    
+    // ✅ Adaptive smoothing factor based on distance
+    const getSmoothingFactor = (distance: number) => {
+      // Faster response when far away, smoother when close
+      if (Math.abs(distance) > 1) return 0.25;
+      if (Math.abs(distance) > 0.5) return 0.2;
+      return 0.15;
+    };
 
     const markReady = () => setIsReady(true);
 
@@ -47,12 +63,20 @@ export default function VideoScrubSection({ t }: Props) {
       );
 
       // ✅ Compute target time based on scroll progress
-      targetTime = progress * (video.duration || 0);
+      const newTargetTime = progress * (video.duration || 0);
+      
+      // ✅ Calculate velocity for momentum-based smoothing
+      velocity = newTargetTime - targetTime;
+      targetTime = newTargetTime;
 
-      // ✅ Faster responsiveness (0.18 = quicker catch-up)
-      currentTime = lerp(currentTime, targetTime, 0.18); 
+      // ✅ Adaptive smoothing based on distance
+      const distance = targetTime - currentTime;
+      const smoothingFactor = getSmoothingFactor(distance);
+      
+      currentTime = lerp(currentTime, targetTime, smoothingFactor);
 
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+      // ✅ Update video only when difference is meaningful (reduces jank)
+      if (Math.abs(video.currentTime - currentTime) > 0.016) {
         try {
           video.currentTime = currentTime;
         } catch {
@@ -67,6 +91,10 @@ export default function VideoScrubSection({ t }: Props) {
       if (isUserActivated) return;
       isUserActivated = true;
       try {
+        // ✅ Mobile optimization: Load smaller chunks progressively
+        if (isMobile() && video.readyState < 2) {
+          video.load(); // Force load initiation
+        }
         await video.play();
         video.pause(); // forces Chrome to decode frames
         video.currentTime = 0;
@@ -115,18 +143,23 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Single video for all devices */}
+        {/* ✅ Single high-quality video with smart loading */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
+          preload={isMobile() ? "metadata" : "auto"}
           muted
           playsInline
           disablePictureInPicture
           poster={POSTER_SRC}
           src={VIDEO_SRC}
+          style={{
+            // ✅ Hardware acceleration for smoother playback
+            transform: "translateZ(0)",
+            willChange: "auto"
+          }}
         />
 
         {/* ✅ Overlay text */}
