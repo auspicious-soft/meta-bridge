@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import ContactButton from "../ContactButton";
 
 const VIDEO_SRC = "/metabridge-video-14.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
-
-// Placeholder ContactButton component
-const ContactButton = ({ label }) => (
-  <button className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-    {label}
-  </button>
-);
 
 type Props = {
   t: {
@@ -26,7 +20,7 @@ export default function VideoScrubSection({ t }: Props) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Detect mobile devices for performance optimization
+    // Detect mobile devices
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768 || 
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -43,12 +37,12 @@ export default function VideoScrubSection({ t }: Props) {
     if (!container || !video) return;
 
     let rafId: number;
-    let currentTime = 0;
+    let currentVideoTime = 0;
     let isUserActivated = false;
 
     const markReady = () => setIsReady(true);
 
-    // --- Core animation loop (FIXED for smooth bidirectional scrolling) ---
+    // --- Fixed animation loop for smooth bidirectional scrolling ---
     const updateVideoTime = () => {
       if (!video || video.readyState < 2 || !video.duration) {
         rafId = requestAnimationFrame(updateVideoTime);
@@ -59,18 +53,18 @@ export default function VideoScrubSection({ t }: Props) {
       const scrollRange = container.offsetHeight - window.innerHeight;
       const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
 
-      // Calculate target time
+      // Calculate target time based on scroll position
       const targetTime = progress * video.duration;
 
-      // Improved smoothing - works for both forward and backward
-      const distance = targetTime - currentTime;
-      const easeFactor = isMobile ? 0.25 : 0.18; // Faster on mobile for better performance
-      currentTime += distance * easeFactor;
+      // Smooth interpolation that works in both directions
+      const distance = targetTime - currentVideoTime;
+      const smoothingFactor = isMobile ? 0.25 : 0.2;
+      currentVideoTime += distance * smoothingFactor;
 
-      // Update video current time with smooth transition
-      if (Math.abs(video.currentTime - currentTime) > 0.001) {
+      // Update video time
+      if (Math.abs(video.currentTime - currentVideoTime) > 0.016) {
         try {
-          video.currentTime = currentTime;
+          video.currentTime = currentVideoTime;
         } catch {
           /* ignore Chrome pre-play restriction */
         }
@@ -95,12 +89,13 @@ export default function VideoScrubSection({ t }: Props) {
 
     const onUserGesture = async () => {
       await tryActivateVideo();
+      window.removeEventListener("click", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
     };
 
     // --- Start loop ---
     rafId = requestAnimationFrame(updateVideoTime);
     
-    // Better loading detection for mobile
     if (isMobile) {
       video.addEventListener("canplaythrough", markReady);
     } else {
@@ -124,9 +119,7 @@ export default function VideoScrubSection({ t }: Props) {
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {/* Gradient background while loading */}
         {!isReady && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]">
-            <div className="text-white text-sm animate-pulse">Loading...</div>
-          </div>
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
         )}
 
         {/* Poster fallback */}
@@ -138,13 +131,13 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* Video layer with mobile optimization */}
+        {/* Video layer */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload={isMobile ? "metadata" : "auto"} // Load less data on mobile
+          preload={isMobile ? "metadata" : "auto"}
           muted
           playsInline
           disablePictureInPicture
@@ -171,4 +164,5 @@ export default function VideoScrubSection({ t }: Props) {
         </div>
       </div>
     </div>
-  );}
+  );
+}
