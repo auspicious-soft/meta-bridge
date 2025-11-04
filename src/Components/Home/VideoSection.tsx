@@ -35,26 +35,29 @@ useLayoutEffect(() => {
   let targetProgress = 0;
   let currentTime = 0;
   let isUserActivated = false;
+  let canUpdate = false;
 
   const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
   const onScroll = () => {
+    if (!canUpdate) return; // 🚫 Don't update until user unlocks video
     const scrollTop = window.scrollY - container.offsetTop;
     const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
     targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
   };
 
   const update = () => {
-    const diff = Math.abs(targetProgress - scrollProgress);
+    if (!canUpdate) {
+      rafId = requestAnimationFrame(update);
+      return;
+    }
 
-    // Faster smoothing only when big scroll changes
-    let smoothFactor = diff > 0.1 ? 0.4 : 0.2;
+    const diff = Math.abs(targetProgress - scrollProgress);
+    const smoothFactor = diff > 0.1 ? 0.4 : 0.2;
     scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
 
     if (video.readyState >= 2 && video.duration) {
       const targetTime = scrollProgress * video.duration;
-
-      // Don’t hammer the decoder — only seek when we’re off by ≥ one frame
       if (Math.abs(video.currentTime - targetTime) > 0.03) {
         try {
           video.currentTime = targetTime;
@@ -69,15 +72,24 @@ useLayoutEffect(() => {
   const ensurePlayable = async () => {
     if (isUserActivated) return;
     isUserActivated = true;
+
     try {
       video.muted = true;
-      video.playbackRate = 0;
+      video.playsInline = true;
+      video.playbackRate = 1;
       await video.play();
+
+      // Let it decode first frame
+      await new Promise((r) => setTimeout(r, 200));
+
       video.pause();
       video.playbackRate = 0;
+
+      // ✅ Now allow updates & mark ready
+      canUpdate = true;
       setIsReady(true);
-    } catch {
-      console.warn("Autoplay blocked, waiting for user gesture...");
+    } catch (err) {
+      console.warn("Mobile autoplay blocked until user interacts", err);
     }
   };
 
@@ -93,16 +105,11 @@ useLayoutEffect(() => {
   window.addEventListener("touchstart", onUserGesture, { once: true });
 
   const onVisibilityChange = () => {
-    if (document.hidden) {
-      cancelAnimationFrame(rafId);
-    } else {
-      rafId = requestAnimationFrame(update);
-    }
+    if (document.hidden) cancelAnimationFrame(rafId);
+    else rafId = requestAnimationFrame(update);
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
-  // Kick off loop
-  onScroll();
   rafId = requestAnimationFrame(update);
 
   return () => {
@@ -114,6 +121,7 @@ useLayoutEffect(() => {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 }, []);
+
 
 
 
