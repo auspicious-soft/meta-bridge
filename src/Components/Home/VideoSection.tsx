@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const VIDEO_SRC = "/metabridge-video-optimized.mp4";
@@ -18,7 +18,7 @@ export default function VideoScrubSection({ t }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
@@ -28,7 +28,7 @@ export default function VideoScrubSection({ t }: Props) {
     let currentTime = 0;
     let isUserActivated = false;
 
-    // ✅ Linear interpolation helper (smooth catching up)
+    // ✅ Smooth interpolation helper
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
     const markReady = () => setIsReady(true);
@@ -39,18 +39,18 @@ export default function VideoScrubSection({ t }: Props) {
         return;
       }
 
-      const scrollTop = window.scrollY - container.offsetTop;
-      const scrollRange = container.offsetHeight - window.innerHeight;
-      const progress = Math.min(
-        1,
-        Math.max(0, scrollTop / Math.max(1, scrollRange))
+      const scrollTop = Math.max(
+        0,
+        Math.min(
+          container.offsetHeight - window.innerHeight,
+          window.scrollY - container.offsetTop
+        )
       );
+      const scrollRange = container.offsetHeight - window.innerHeight;
+      const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
 
-      // ✅ Compute target time based on scroll progress
       targetTime = progress * (video.duration || 0);
-
-      // ✅ Faster responsiveness (0.18 = quicker catch-up)
-      currentTime = lerp(currentTime, targetTime, 0.18); 
+      currentTime = lerp(currentTime, targetTime, 0.3); // smoother, faster catch-up
 
       if (Math.abs(video.currentTime - currentTime) > 0.01) {
         try {
@@ -60,7 +60,11 @@ export default function VideoScrubSection({ t }: Props) {
         }
       }
 
-      rafId = requestAnimationFrame(updateVideoTime);
+      if ("requestVideoFrameCallback" in video) {
+        (video as any).requestVideoFrameCallback(updateVideoTime);
+      } else {
+        rafId = requestAnimationFrame(updateVideoTime);
+      }
     };
 
     const tryActivateVideo = async () => {
@@ -68,7 +72,7 @@ export default function VideoScrubSection({ t }: Props) {
       isUserActivated = true;
       try {
         await video.play();
-        video.pause(); // forces Chrome to decode frames
+        video.pause(); // allow Chrome to decode frames
         video.currentTime = 0;
         markReady();
       } catch {
@@ -82,17 +86,21 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
-    video.addEventListener("loadeddata", markReady);
-    window.addEventListener("scroll", () => {
+    const onScroll = () => {
       if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
-    });
+    };
+
+    video.addEventListener("loadeddata", markReady);
+    window.addEventListener("scroll", onScroll);
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
+    // Start the loop
     rafId = requestAnimationFrame(updateVideoTime);
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
@@ -110,7 +118,7 @@ export default function VideoScrubSection({ t }: Props) {
         <img
           src={POSTER_SRC}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1000ms] ${
             isReady ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -118,7 +126,7 @@ export default function VideoScrubSection({ t }: Props) {
         {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           preload="auto"
