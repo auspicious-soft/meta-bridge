@@ -29,37 +29,83 @@ export default function VideoScrubSection({ t }: Props) {
     let currentTime = 0;
     let lastTimeUpdate = 0;
     let isUserActivated = false;
+    let lastScrollY = window.scrollY;
+    let scrollDirection = 0; // Track scroll direction
 
+    // Improved lerp function with configurable easing
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+    
+    // Custom easing function for smoother transitions
+    const easeInOutCubic = (t: number): number => {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
 
     const onScroll = () => {
-      const scrollTop = window.scrollY - container.offsetTop;
+      const currentScrollY = window.scrollY;
+      const scrollTop = currentScrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      targetProgress = Math.min(
+      
+      // Calculate scroll direction
+      scrollDirection = currentScrollY > lastScrollY ? 1 : -1;
+      lastScrollY = currentScrollY;
+      
+      // Calculate target progress
+      const newTargetProgress = Math.min(
         1,
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
+      
+      // Apply easing to the target progress for smoother transitions
+      const progressDiff = Math.abs(newTargetProgress - targetProgress);
+      if (progressDiff > 0.01) {
+        targetProgress = lerp(targetProgress, newTargetProgress, 0.3);
+      } else {
+        targetProgress = newTargetProgress;
+      }
     };
 
     const update = (timestamp: number) => {
-      // Dynamic smoothing based on scroll speed
+      // Calculate velocity with direction consideration
       const velocity = Math.abs(targetProgress - scrollProgress);
-      const smoothing =
-        velocity > 0.05 ? 0.28 : velocity > 0.01 ? 0.2 : 0.15;
-
-      scrollProgress = lerp(scrollProgress, targetProgress, smoothing);
+      const isScrollingInDirection = (targetProgress - scrollProgress) * scrollDirection >= 0;
+      
+      // Dynamic smoothing based on scroll speed and direction
+      let smoothing;
+      if (velocity > 0.05) {
+        smoothing = isScrollingInDirection ? 0.25 : 0.35;
+      } else if (velocity > 0.01) {
+        smoothing = isScrollingInDirection ? 0.18 : 0.25;
+      } else {
+        smoothing = isScrollingInDirection ? 0.12 : 0.18;
+      }
+      
+      // Apply easing to the interpolation
+      const easedProgress = easeInOutCubic(scrollProgress);
+      const easedTarget = easeInOutCubic(targetProgress);
+      const easedNewProgress = lerp(easedProgress, easedTarget, smoothing);
+      
+      // Convert back from eased space
+      scrollProgress = easedNewProgress;
 
       if (video.readyState >= 2 && video.duration) {
         const targetTime = scrollProgress * video.duration;
-        currentTime = lerp(currentTime, targetTime, 0.3);
+        
+        // Adjust time interpolation based on direction
+        const timeSmoothing = isScrollingInDirection ? 0.3 : 0.4;
+        currentTime = lerp(currentTime, targetTime, timeSmoothing);
 
-        if (timestamp - lastTimeUpdate > 16) {
+        // Update video time more frequently for smoother playback
+        if (timestamp - lastTimeUpdate > 8) { // Reduced from 16ms to 8ms
           const diff = Math.abs(video.currentTime - currentTime);
-          if (diff > 0.015) {
+          if (diff > 0.01) { // Reduced threshold for more frequent updates
             try {
-              video.currentTime = currentTime;
+              // Ensure we're not trying to set a time outside the video duration
+              const clampedTime = Math.max(0.01, Math.min(video.duration - 0.01, currentTime));
+              video.currentTime = clampedTime;
               lastTimeUpdate = timestamp;
-            } catch {}
+            } catch (e) {
+              console.warn("Error setting video time:", e);
+            }
           }
         }
       }
@@ -91,8 +137,12 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
+    // Preload the video more aggressively
+    video.load();
+    
     video.addEventListener("loadeddata", markReady);
-    window.addEventListener("scroll", onScroll);
+    video.addEventListener("canplaythrough", markReady); // Additional event listener
+    window.addEventListener("scroll", onScroll, { passive: true }); // Use passive listener
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
@@ -104,6 +154,8 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
+      video.removeEventListener("loadeddata", markReady);
+      video.removeEventListener("canplaythrough", markReady);
     };
   }, []);
 
