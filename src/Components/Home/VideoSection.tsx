@@ -25,53 +25,56 @@ export default function VideoScrubSection({ t }: Props) {
 
     let rafId: number;
     let targetTime = 0;
-    let currentTime = 0;
+    let smoothTime = 0;
     let isUserActivated = false;
-
-    // Smooth interpolation
-    const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+    let lastProgress = 0;
 
     const markReady = () => setIsReady(true);
 
+    // --- Core animation loop ---
     const updateVideoTime = () => {
-      if (!video || video.readyState < 2) {
+      if (!video || video.readyState < 2 || !video.duration) {
         rafId = requestAnimationFrame(updateVideoTime);
         return;
       }
 
-      const rect = container.getBoundingClientRect();
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
+      const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
 
-      const progress = Math.min(
-        1,
-        Math.max(0, scrollTop / Math.max(1, scrollRange))
-      );
+      // Update target based on scroll
+      targetTime = progress * video.duration;
 
-      targetTime = progress * (video.duration || 0);
-      currentTime = lerp(currentTime, targetTime, 0.3);
+      // --- Smooth easing between frames ---
+      // Smaller step for gentle blending
+      const diff = targetTime - smoothTime;
+      const step = diff * 0.15; // lower = smoother motion, 0.1–0.2 is ideal
+      smoothTime += step;
 
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+      // Prevent micro-jitter by clamping small changes
+      if (Math.abs(video.currentTime - smoothTime) > 0.002) {
         try {
-          video.currentTime = currentTime;
+          video.currentTime = smoothTime;
         } catch {
-          // ignored
+          /* ignore Chrome pre-play restriction */
         }
       }
 
+      lastProgress = progress;
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
+    // --- Chrome autoplay unlock ---
     const tryActivateVideo = async () => {
       if (isUserActivated) return;
       isUserActivated = true;
       try {
         await video.play();
-        video.pause(); // allows Chrome to decode frames
+        video.pause();
         video.currentTime = 0;
         markReady();
       } catch {
-        console.warn("Autoplay blocked, waiting for user gesture...");
+        console.warn("Autoplay blocked; waiting for user gesture…");
       }
     };
 
@@ -81,10 +84,8 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
-    // Start continuous RAF loop
+    // --- Start loop ---
     rafId = requestAnimationFrame(updateVideoTime);
-
-    // Activate video once
     video.addEventListener("loadeddata", markReady);
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
@@ -109,7 +110,7 @@ export default function VideoScrubSection({ t }: Props) {
         <img
           src={POSTER_SRC}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1000ms] ${
             isReady ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -117,7 +118,7 @@ export default function VideoScrubSection({ t }: Props) {
         {/* Video layer */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000 ${
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           preload="auto"
