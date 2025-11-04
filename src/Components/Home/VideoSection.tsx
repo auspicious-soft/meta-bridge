@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/metabridge-video.mp4";
+const VIDEO_SRC = "/metabridge-video-optimized.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
 
 // Detect if mobile device
