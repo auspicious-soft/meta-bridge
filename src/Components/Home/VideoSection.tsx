@@ -1,25 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const DESKTOP_VIDEO_SRC = "/metabridge-video.mp4";
-const MOBILE_VIDEO_SRC = "/metabridge-video-mobile.mp4";
+const VIDEO_SRC = "/metabridge-video-14.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
-
-// Detect if mobile device
-const isMobileDevice = () => {
-  return (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    ) || window.innerWidth < 768
-  );
-};
 
 type Props = {
   t: {
     heroSubTitle: string;
     heroTitle: string;
     heroDesc: string;
-    contactUsLabel: string;
+    contactUsLabel: string; 
   };
 };
 
@@ -27,12 +17,6 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
-  const [videoSrc, setVideoSrc] = useState(DESKTOP_VIDEO_SRC);
-
-  // ✅ Set correct video source once on mount
-  useLayoutEffect(() => {
-    setVideoSrc(isMobileDevice() ? MOBILE_VIDEO_SRC : DESKTOP_VIDEO_SRC);
-  }, []);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -51,27 +35,27 @@ export default function VideoScrubSection({ t }: Props) {
     const onScroll = () => {
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      const newProgress = Math.min(
+      targetProgress = Math.min(
         1,
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
-      targetProgress = newProgress;
     };
 
     const update = (timestamp: number) => {
+      // Dynamic smoothing based on scroll speed
       const velocity = Math.abs(targetProgress - scrollProgress);
       const smoothing =
-        velocity > 0.05 ? 0.25 : velocity > 0.01 ? 0.18 : 0.12;
+        velocity > 0.05 ? 0.28 : velocity > 0.01 ? 0.2 : 0.15;
 
       scrollProgress = lerp(scrollProgress, targetProgress, smoothing);
 
       if (video.readyState >= 2 && video.duration) {
         const targetTime = scrollProgress * video.duration;
-        currentTime = lerp(currentTime, targetTime, 0.25);
+        currentTime = lerp(currentTime, targetTime, 0.3);
 
         if (timestamp - lastTimeUpdate > 16) {
           const diff = Math.abs(video.currentTime - currentTime);
-          if (diff > 0.03) {
+          if (diff > 0.015) {
             try {
               video.currentTime = currentTime;
               lastTimeUpdate = timestamp;
@@ -121,7 +105,7 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
-  }, [videoSrc]);
+  }, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
@@ -140,18 +124,18 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Video source dynamically chosen */}
+        {/* Smooth scroll-controlled video */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload={isMobileDevice() ? "metadata" : "auto"}
+          preload="auto"
           muted
           playsInline
           disablePictureInPicture
           poster={POSTER_SRC}
-          src={videoSrc}
+          src={VIDEO_SRC}
           style={{
             transform: "translateZ(0)",
             willChange: "auto",
