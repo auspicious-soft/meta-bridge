@@ -43,52 +43,41 @@ useLayoutEffect(() => {
     const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
     targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
   };
-const update = () => {
-  const diff = Math.abs(targetProgress - scrollProgress);
 
-  // Adaptive smoothing — faster when scrolling fast
-  let smoothFactor = 0.15;
-  if (diff > 0.05) smoothFactor = 0.35;
-  if (diff > 0.15) smoothFactor = 0.55;
+  const update = () => {
+    const diff = Math.abs(targetProgress - scrollProgress);
 
-  // Smooth progress but allow fast catch-up
-  scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
+    // Faster smoothing only when big scroll changes
+    let smoothFactor = diff > 0.1 ? 0.4 : 0.2;
+    scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
 
-  if (video.readyState >= 2 && video.duration) {
-    const targetTime = scrollProgress * video.duration;
+    if (video.readyState >= 2 && video.duration) {
+      const targetTime = scrollProgress * video.duration;
 
-    // Adaptive time smoothing too
-    let timeSmooth = diff > 0.1 ? 0.5 : 0.25;
-    currentTime = lerp(currentTime, targetTime, timeSmooth);
-
-    // Snap to frame when very far behind
-    if (diff > 0.25) currentTime = targetTime;
-
-    try {
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
-        video.currentTime = currentTime;
+      // Don’t hammer the decoder — only seek when we’re off by ≥ one frame
+      if (Math.abs(video.currentTime - targetTime) > 0.03) {
+        try {
+          video.currentTime = targetTime;
+        } catch {}
       }
-    } catch {}
-  }
+      currentTime = targetTime;
+    }
 
-  rafId = requestAnimationFrame(update);
-};
-
+    rafId = requestAnimationFrame(update);
+  };
 
   const ensurePlayable = async () => {
     if (isUserActivated) return;
     isUserActivated = true;
-
     try {
-      // Force Safari to allow frame updates
       video.muted = true;
-      video.playbackRate = 0; // “playing” but frozen
+      video.playbackRate = 0;
       await video.play();
-      video.pause(); // ensure paused frame updates allowed
+      video.pause();
       video.playbackRate = 0;
       setIsReady(true);
-    } catch (err) {
-      console.warn("Safari autoplay blocked, waiting for gesture...", err);
+    } catch {
+      console.warn("Autoplay blocked, waiting for user gesture...");
     }
   };
 
@@ -98,13 +87,11 @@ const update = () => {
     window.removeEventListener("touchstart", onUserGesture);
   };
 
-  // Attach listeners
   video.addEventListener("loadeddata", ensurePlayable);
   window.addEventListener("scroll", onScroll);
   window.addEventListener("click", onUserGesture, { once: true });
   window.addEventListener("touchstart", onUserGesture, { once: true });
 
-  // Prevent wasted CPU when tab hidden
   const onVisibilityChange = () => {
     if (document.hidden) {
       cancelAnimationFrame(rafId);
@@ -114,7 +101,7 @@ const update = () => {
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
-  // Start animation
+  // Kick off loop
   onScroll();
   rafId = requestAnimationFrame(update);
 
