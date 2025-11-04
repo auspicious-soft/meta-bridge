@@ -2,18 +2,14 @@ import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const DESKTOP_VIDEO_SRC = "/metabridge-video.mp4";
-const MOBILE_VIDEO_SRC = "/metabridge-video-mobile-optimized.mp4";
+const MOBILE_VIDEO_SRC = "/metabridge-video-mobile.mp4";
 const DESKTOP_POSTER_SRC = "/metabridge-video-poster.png";
-const MOBILE_POSTER_SRC = "/metabridge-poster-mobile.png";
+const MOBILE_POSTER_SRC = "/metabridge-video-mobile-poster.png";
 
-// ✅ Detect if mobile device
-const isMobileDevice = () => {
-  return (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    ) || window.innerWidth < 768
-  );
-};
+const isMobileDevice = () =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  ) || window.innerWidth < 768;
 
 type Props = {
   t: {
@@ -28,10 +24,11 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
-  const [videoSrc, setVideoSrc] = useState(DESKTOP_VIDEO_SRC);
-  const [posterSrc, setPosterSrc] = useState(DESKTOP_POSTER_SRC);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [videoSrc, setVideoSrc] = useState("");
+  const [posterSrc, setPosterSrc] = useState("");
 
-  // ✅ Set correct video & poster once on mount
+  // ✅ Set device-specific assets
   useLayoutEffect(() => {
     if (isMobileDevice()) {
       setVideoSrc(MOBILE_VIDEO_SRC);
@@ -42,8 +39,28 @@ export default function VideoScrubSection({ t }: Props) {
     }
   }, []);
 
-  // ✅ Scroll-scrub logic
+  // ✅ Lazy load video once in viewport
   useLayoutEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (containerRef.current) observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // ✅ Scroll scrub logic
+  useLayoutEffect(() => {
+    if (!shouldLoad) return;
+
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
@@ -98,10 +115,6 @@ export default function VideoScrubSection({ t }: Props) {
       if (isUserActivated) return;
       isUserActivated = true;
       try {
-        // 🔥 Pre-decode trick: play + pause 1 frame to prime decoder
-        await video.play();
-        video.pause();
-        video.currentTime = 0.01;
         await video.play();
         video.pause();
         video.currentTime = 0;
@@ -131,17 +144,15 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
-  }, [videoSrc]);
+  }, [shouldLoad, videoSrc]);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* ✅ Gradient background while loading */}
         {!isReady && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#203446] to-[#0b1118]" />
         )}
 
-        {/* ✅ Poster fallback */}
         <img
           src={posterSrc}
           alt="Metabridge background"
@@ -150,25 +161,25 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Video source dynamically chosen */}
-        <video
-          ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
-            isReady ? "opacity-100" : "opacity-0"
-          }`}
-          preload={isMobileDevice() ? "metadata" : "auto"}
-          muted
-          playsInline
-          disablePictureInPicture
-          poster={posterSrc}
-          src={videoSrc}
-          style={{
-            transform: "translateZ(0)",
-            willChange: "auto",
-          }}
-        />
+        {shouldLoad && (
+          <video
+            ref={videoRef}
+            className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
+              isReady ? "opacity-100" : "opacity-0"
+            }`}
+            preload="metadata"
+            muted
+            playsInline
+            disablePictureInPicture
+            poster={posterSrc}
+            src={videoSrc}
+            style={{
+              transform: "translateZ(0)",
+              willChange: "auto",
+            }}
+          />
+        )}
 
-        {/* ✅ Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
