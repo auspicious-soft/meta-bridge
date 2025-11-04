@@ -25,7 +25,7 @@ export default function VideoScrubSection({ t }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-  useLayoutEffect(() => {
+ useLayoutEffect(() => {
   const container = containerRef.current;
   const video = videoRef.current;
   if (!container || !video) return;
@@ -34,11 +34,12 @@ export default function VideoScrubSection({ t }: Props) {
   let scrollProgress = 0;
   let targetProgress = 0;
   let currentTime = 0;
+  let lastTimeUpdate = 0;
   let isUserActivated = false;
 
   const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
-  // ✅ Smooth scroll tracking independent from scroll event frequency
+  // 🧮 Scroll listener: updates only targetProgress
   const onScroll = () => {
     const scrollTop = window.scrollY - container.offsetTop;
     const scrollRange = container.offsetHeight - window.innerHeight;
@@ -46,22 +47,32 @@ export default function VideoScrubSection({ t }: Props) {
     targetProgress = newProgress;
   };
 
-  const update = () => {
-    // ✅ Smoothly interpolate progress to avoid jumps
-    scrollProgress = lerp(scrollProgress, targetProgress, 0.15);
+  const update = (timestamp: number) => {
+    // 🧩 Compute smoothing dynamically based on scroll speed
+    const velocity = Math.abs(targetProgress - scrollProgress);
+    const smoothing = velocity > 0.05 ? 0.25 : velocity > 0.01 ? 0.18 : 0.12;
+
+    // Smooth scroll progress interpolation
+    scrollProgress = lerp(scrollProgress, targetProgress, smoothing);
 
     if (video.readyState >= 2 && video.duration) {
       const targetTime = scrollProgress * video.duration;
-      // ✅ Smoothly interpolate video time for frame-by-frame updates
-      currentTime = lerp(currentTime, targetTime, 0.2);
+      // Smooth video time interpolation
+      currentTime = lerp(currentTime, targetTime, 0.25);
 
-      // ✅ Only update when meaningful difference
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
-        try {
-          video.currentTime = currentTime;
-        } catch {}
+      // 🧠 Decode pacing: only update every ~16ms (≈60fps)
+      if (timestamp - lastTimeUpdate > 16) {
+        const diff = Math.abs(video.currentTime - currentTime);
+
+        // 🧩 Avoid large seeks that cause decode stalls
+        if (diff > 0.03) {
+          try {
+            video.currentTime = currentTime;
+            lastTimeUpdate = timestamp;
+          } catch {}
+        }
       }
-    }
+    }   
 
     rafId = requestAnimationFrame(update);
   };
@@ -72,14 +83,18 @@ export default function VideoScrubSection({ t }: Props) {
     if (isUserActivated) return;
     isUserActivated = true;
     try {
+      // 🔥 Pre-decode trick: play + pause 1 frame to prime decoder
+      await video.play();
+      video.pause();
+      video.currentTime = 0.01;
       await video.play();
       video.pause();
       video.currentTime = 0;
       markReady();
     } catch {
-      console.warn("Autoplay blocked, waiting for user gesture...");
+      console.warn("Autoplay blocked until user gesture");
     }
-  };
+  }; 
 
   const onUserGesture = async () => {
     await tryActivateVideo();
@@ -102,7 +117,6 @@ export default function VideoScrubSection({ t }: Props) {
     window.removeEventListener("touchstart", onUserGesture);
   };
 }, []);
-
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
