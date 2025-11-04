@@ -25,7 +25,7 @@ export default function VideoScrubSection({ t }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
- useLayoutEffect(() => {
+useLayoutEffect(() => {
   const container = containerRef.current;
   const video = videoRef.current;
   if (!container || !video) return;
@@ -34,8 +34,6 @@ export default function VideoScrubSection({ t }: Props) {
   let scrollProgress = 0;
   let targetProgress = 0;
   let currentTime = 0;
-  let lastScrollTop = 0;
-  let scrollDir = 1; // 1 = down, -1 = up
   let isUserActivated = false;
 
   const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
@@ -43,71 +41,80 @@ export default function VideoScrubSection({ t }: Props) {
   const onScroll = () => {
     const scrollTop = window.scrollY - container.offsetTop;
     const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
-
-    // detect direction
-    scrollDir = scrollTop > lastScrollTop ? 1 : -1;
-    lastScrollTop = scrollTop;
-
-    const newProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
-    targetProgress = newProgress;
+    targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
   };
 
   const update = () => {
-    // faster lerp when user scrolls actively
-    const smoothFactor = scrollDir > 0 ? 0.25 : 0.3;
-    scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
+    scrollProgress = lerp(scrollProgress, targetProgress, 0.2);
 
     if (video.readyState >= 2 && video.duration) {
       const targetTime = scrollProgress * video.duration;
-      currentTime = lerp(currentTime, targetTime, 0.25);
+      currentTime = lerp(currentTime, targetTime, 0.3);
 
-      // Avoid stutter: always update slightly
+      // Continuous update for Safari
       if (Math.abs(video.currentTime - currentTime) > 0.005) {
         try {
           video.currentTime = currentTime;
-        } catch (err) {
-          // ignore harmless DOM exceptions
-        }
+        } catch {}
       }
     }
 
     rafId = requestAnimationFrame(update);
   };
 
-  const tryActivateVideo = async () => {
+  const ensurePlayable = async () => {
     if (isUserActivated) return;
     isUserActivated = true;
+
     try {
+      // Force Safari to allow frame updates
+      video.muted = true;
+      video.playbackRate = 0; // “playing” but frozen
       await video.play();
-      video.pause();
-      video.currentTime = 0;
+      video.pause(); // ensure paused frame updates allowed
+      video.playbackRate = 0;
       setIsReady(true);
-    } catch {
-      console.warn("Autoplay blocked, waiting for user gesture...");
+    } catch (err) {
+      console.warn("Safari autoplay blocked, waiting for gesture...", err);
     }
   };
 
   const onUserGesture = async () => {
-    await tryActivateVideo();
+    await ensurePlayable();
     window.removeEventListener("click", onUserGesture);
     window.removeEventListener("touchstart", onUserGesture);
   };
 
-  video.addEventListener("loadeddata", tryActivateVideo);
+  // Attach listeners
+  video.addEventListener("loadeddata", ensurePlayable);
   window.addEventListener("scroll", onScroll);
   window.addEventListener("click", onUserGesture, { once: true });
   window.addEventListener("touchstart", onUserGesture, { once: true });
 
+  // Prevent wasted CPU when tab hidden
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      cancelAnimationFrame(rafId);
+    } else {
+      rafId = requestAnimationFrame(update);
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  // Start animation
   onScroll();
   rafId = requestAnimationFrame(update);
 
   return () => {
     cancelAnimationFrame(rafId);
+    video.removeEventListener("loadeddata", ensurePlayable);
     window.removeEventListener("scroll", onScroll);
     window.removeEventListener("click", onUserGesture);
     window.removeEventListener("touchstart", onUserGesture);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 }, []);
+
 
 
 
