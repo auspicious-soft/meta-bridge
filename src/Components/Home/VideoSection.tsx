@@ -23,12 +23,12 @@ export default function VideoScrubSection({ t }: Props) {
     const video = videoRef.current;
     if (!container || !video) return;
 
-    let rafId: number | null = null;
+    let rafId: number;
     let targetTime = 0;
     let currentTime = 0;
     let isUserActivated = false;
 
-    // ✅ Smooth interpolation helper
+    // Smooth interpolation
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
     const markReady = () => setIsReady(true);
@@ -39,32 +39,27 @@ export default function VideoScrubSection({ t }: Props) {
         return;
       }
 
-      const scrollTop = Math.max(
-        0,
-        Math.min(
-          container.offsetHeight - window.innerHeight,
-          window.scrollY - container.offsetTop
-        )
-      );
+      const rect = container.getBoundingClientRect();
+      const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
-      const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
+
+      const progress = Math.min(
+        1,
+        Math.max(0, scrollTop / Math.max(1, scrollRange))
+      );
 
       targetTime = progress * (video.duration || 0);
-      currentTime = lerp(currentTime, targetTime, 0.3); // smoother, faster catch-up
+      currentTime = lerp(currentTime, targetTime, 0.3);
 
       if (Math.abs(video.currentTime - currentTime) > 0.01) {
         try {
           video.currentTime = currentTime;
         } catch {
-          // Chrome may block before play gesture
+          // ignored
         }
       }
 
-      if ("requestVideoFrameCallback" in video) {
-        (video as any).requestVideoFrameCallback(updateVideoTime);
-      } else {
-        rafId = requestAnimationFrame(updateVideoTime);
-      }
+      rafId = requestAnimationFrame(updateVideoTime);
     };
 
     const tryActivateVideo = async () => {
@@ -72,7 +67,7 @@ export default function VideoScrubSection({ t }: Props) {
       isUserActivated = true;
       try {
         await video.play();
-        video.pause(); // allow Chrome to decode frames
+        video.pause(); // allows Chrome to decode frames
         video.currentTime = 0;
         markReady();
       } catch {
@@ -86,21 +81,17 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
-    const onScroll = () => {
-      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
-    };
+    // Start continuous RAF loop
+    rafId = requestAnimationFrame(updateVideoTime);
 
+    // Activate video once
     video.addEventListener("loadeddata", markReady);
-    window.addEventListener("scroll", onScroll);
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
-    // Start the loop
-    rafId = requestAnimationFrame(updateVideoTime);
-
     return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId);
+      video.removeEventListener("loadeddata", markReady);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
@@ -109,24 +100,24 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* ✅ Gradient background while loading */}
+        {/* Gradient background while loading */}
         {!isReady && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
         )}
 
-        {/* ✅ Poster fallback */}
+        {/* Poster fallback */}
         <img
           src={POSTER_SRC}
           alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1000ms] ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
             isReady ? "opacity-0" : "opacity-100"
           }`}
         />
 
-        {/* ✅ Single video for all devices */}
+        {/* Video layer */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
           preload="auto"
@@ -137,7 +128,7 @@ export default function VideoScrubSection({ t }: Props) {
           src={VIDEO_SRC}
         />
 
-        {/* ✅ Overlay text */}
+        {/* Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
