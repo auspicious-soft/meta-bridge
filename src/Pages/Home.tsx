@@ -21,7 +21,7 @@ const Home = () => {
       <ChooseMetabridgeSection t={t} />
       <TabSection t={t} />
       <EveryStep t={t} />
-      <MetaBridgeGridSection t={t} />
+      <MetaBridgeGridSection t={t} /> 
       <ImagePinnedSection t={t} />
       <TailorMadeSection t={t} />
     </>
