@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/metabridge-video-optimized.mp4";
+const VIDEO_SRC = "/output-1.mp4";
 
 type Props = {
   t: {
