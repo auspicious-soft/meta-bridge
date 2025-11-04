@@ -43,24 +43,37 @@ useLayoutEffect(() => {
     const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
     targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
   };
+const update = () => {
+  const diff = Math.abs(targetProgress - scrollProgress);
 
-  const update = () => {
-    scrollProgress = lerp(scrollProgress, targetProgress, 0.2);
+  // Adaptive smoothing — faster when scrolling fast
+  let smoothFactor = 0.15;
+  if (diff > 0.05) smoothFactor = 0.35;
+  if (diff > 0.15) smoothFactor = 0.55;
 
-    if (video.readyState >= 2 && video.duration) {
-      const targetTime = scrollProgress * video.duration;
-      currentTime = lerp(currentTime, targetTime, 0.3);
+  // Smooth progress but allow fast catch-up
+  scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
 
-      // Continuous update for Safari
-      if (Math.abs(video.currentTime - currentTime) > 0.005) {
-        try {
-          video.currentTime = currentTime;
-        } catch {}
+  if (video.readyState >= 2 && video.duration) {
+    const targetTime = scrollProgress * video.duration;
+
+    // Adaptive time smoothing too
+    let timeSmooth = diff > 0.1 ? 0.5 : 0.25;
+    currentTime = lerp(currentTime, targetTime, timeSmooth);
+
+    // Snap to frame when very far behind
+    if (diff > 0.25) currentTime = targetTime;
+
+    try {
+      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+        video.currentTime = currentTime;
       }
-    }
+    } catch {}
+  }
 
-    rafId = requestAnimationFrame(update);
-  };
+  rafId = requestAnimationFrame(update);
+};
+
 
   const ensurePlayable = async () => {
     if (isUserActivated) return;
