@@ -63,18 +63,22 @@ export default function VideoScrubSection({ t }: Props) {
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
-    const tryActivateVideo = async () => {
-      if (isUserActivated) return;
-      isUserActivated = true;
-      try {
-        await video.play();
-        video.pause(); // forces Chrome to decode frames
-        video.currentTime = 0;
-        markReady();
-      } catch {
-        console.warn("Autoplay blocked, waiting for user gesture...");
-      }
-    };
+const tryActivateVideo = async () => {
+  if (isUserActivated) return;
+  isUserActivated = true;
+  try {
+    video.muted = true;
+    video.playsInline = true;
+    await video.play();
+    await new Promise(r => setTimeout(r, 150)); // decode buffer
+    video.pause();
+    video.currentTime = 0;
+    setIsReady(true);
+  } catch (err) {
+    console.warn("Autoplay blocked", err);
+  }
+};
+
 
     const onUserGesture = async () => {
       await tryActivateVideo();
