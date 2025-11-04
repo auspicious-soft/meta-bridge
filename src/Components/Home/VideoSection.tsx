@@ -2,9 +2,9 @@ import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const DESKTOP_VIDEO_SRC = "/metabridge-video.mp4";
-const MOBILE_VIDEO_SRC = "/metabridge-video-mobile.mp4";
+const MOBILE_VIDEO_SRC = "/metabridge-video-mobile-optimized.mp4";
 const DESKTOP_POSTER_SRC = "/metabridge-video-poster.png";
-const MOBILE_POSTER_SRC = "/metabridge-video-mobile-poster.png";
+const MOBILE_POSTER_SRC = "/metabridge-poster-mobile.png";
 
 // ✅ Detect if mobile device
 const isMobileDevice = () => {
