@@ -1,7 +1,7 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/output-1.mp4";
+const VIDEO_SRC = "/metabridge-video-optimized.mp4";
 
 type Props = {
   t: {
@@ -15,7 +15,6 @@ type Props = {
 export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isReady, setIsReady] = useState(false);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -27,10 +26,7 @@ export default function VideoScrubSection({ t }: Props) {
     let currentTime = 0;
     let isUserActivated = false;
 
-    // ✅ Linear interpolation helper (smooth catching up)
     const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
-
-    const markReady = () => setIsReady(true);
 
     const updateVideoTime = () => {
       if (!video || video.readyState < 2) {
@@ -45,17 +41,14 @@ export default function VideoScrubSection({ t }: Props) {
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
 
-      // ✅ Compute target time based on scroll progress
       targetTime = progress * (video.duration || 0);
-
-      // ✅ Faster responsiveness (0.18 = quicker catch-up)
-      currentTime = lerp(currentTime, targetTime, 0.25); 
+      currentTime = lerp(currentTime, targetTime, 0.25);
 
       if (Math.abs(video.currentTime - currentTime) > 0.01) {
         try {
           video.currentTime = currentTime;
         } catch {
-          // Chrome may block before play gesture
+          // Safari or Chrome might block before user gesture
         }
       }
 
@@ -67,9 +60,8 @@ export default function VideoScrubSection({ t }: Props) {
       isUserActivated = true;
       try {
         await video.play();
-        video.pause(); // forces Chrome to decode frames
+        video.pause();
         video.currentTime = 0;
-        markReady();
       } catch {
         console.warn("Autoplay blocked, waiting for user gesture...");
       }
@@ -81,7 +73,6 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
-    video.addEventListener("loadeddata", markReady);
     window.addEventListener("scroll", () => {
       if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
     });
@@ -100,18 +91,16 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* ✅ Gradient background while loading */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
-            isReady ? "opacity-100" : "opacity-0"
-          }`}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           preload="auto"
           muted
           playsInline
+          disablePictureInPicture
           src={VIDEO_SRC}
         />
-        {/* ✅ Overlay text */}
+
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
