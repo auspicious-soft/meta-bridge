@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/4k.mp4";
+const VIDEO_SRC = "/FHD.mp4";
 
 type Props = {
   t: {
