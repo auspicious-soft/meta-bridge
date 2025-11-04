@@ -26,12 +26,12 @@ export default function VideoScrubSection({ t }: Props) {
     let rafId: number;
     let targetTime = 0;
     let smoothTime = 0;
-    let lastProgress = 0;
-    let lastScrollY = window.scrollY;
     let isUserActivated = false;
+    let lastProgress = 0;
 
     const markReady = () => setIsReady(true);
 
+    // --- Core animation loop ---
     const updateVideoTime = () => {
       if (!video || video.readyState < 2 || !video.duration) {
         rafId = requestAnimationFrame(updateVideoTime);
@@ -41,28 +41,22 @@ export default function VideoScrubSection({ t }: Props) {
       const scrollTop = window.scrollY - container.offsetTop;
       const scrollRange = container.offsetHeight - window.innerHeight;
       const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
+
+      // Update target based on scroll
       targetTime = progress * video.duration;
 
-      // --- Determine scroll direction and velocity ---
-      const scrollDelta = window.scrollY - lastScrollY;
-      const direction = Math.sign(scrollDelta);
-      const speed = Math.min(1, Math.abs(scrollDelta) / 100); // normalized 0–1
-      lastScrollY = window.scrollY;
-
-      // --- Adaptive easing ---
-      // Faster blending when reversing or moving quickly
-      let baseLerp = 0.15;
-      if (direction < 0) baseLerp = 0.25; // smoother backward
-      baseLerp += speed * 0.1; // dynamically accelerate with speed
-
+      // --- Smooth easing between frames ---
+      // Smaller step for gentle blending
       const diff = targetTime - smoothTime;
-      smoothTime += diff * baseLerp;
+      const step = diff * 0.15; // lower = smoother motion, 0.1–0.2 is ideal
+      smoothTime += step;
 
+      // Prevent micro-jitter by clamping small changes
       if (Math.abs(video.currentTime - smoothTime) > 0.002) {
         try {
           video.currentTime = smoothTime;
         } catch {
-          /* Ignore Chrome pre-play restrictions */
+          /* ignore Chrome pre-play restriction */
         }
       }
 
@@ -90,6 +84,7 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("touchstart", onUserGesture);
     };
 
+    // --- Start loop ---
     rafId = requestAnimationFrame(updateVideoTime);
     video.addEventListener("loadeddata", markReady);
     window.addEventListener("click", onUserGesture, { once: true });
@@ -106,10 +101,12 @@ export default function VideoScrubSection({ t }: Props) {
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* Gradient background while loading */}
         {!isReady && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
         )}
 
+        {/* Poster fallback */}
         <img
           src={POSTER_SRC}
           alt="Metabridge background"
@@ -118,6 +115,7 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
+        {/* Video layer */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
@@ -131,6 +129,7 @@ export default function VideoScrubSection({ t }: Props) {
           src={VIDEO_SRC}
         />
 
+        {/* Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
             <h6 className="text-[#f1f5f8] text-sm md:text-base uppercase mb-3 md:mb-5">
