@@ -76,7 +76,7 @@ export default function VideoScrubSection({ t }: Props) {
 
       if (video.readyState >= 2 && video.duration) {
         const targetTime = scrollProgress * video.duration;
-        currentTime = lerp(currentTime, targetTime, 0.25);
+        currentTime = lerp(currentTime, targetTime, 0.55);
 
         if (timestamp - lastTimeUpdate > 16) {
           const diff = Math.abs(video.currentTime - currentTime);
