@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const DESKTOP_VIDEO_SRC = "/metabridge-video.mp4";
-const MOBILE_VIDEO_SRC = "/metabridge-video-mobile-optimized.mp4";
+const MOBILE_VIDEO_SRC = "/metabridge-video-mobile.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
 
 // Detect if mobile device
@@ -118,7 +118,7 @@ export default function VideoScrubSection({ t }: Props) {
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("click", onUserGesture); 
+      window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
   }, [videoSrc]);
