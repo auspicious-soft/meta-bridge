@@ -72,7 +72,20 @@ export default function VideoScrubSection({ t }: Props) {
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
+   // Play briefly on page load (0.5s)
+    const playBriefly = async () => {
+      try {
+        await video.play();
+        setTimeout(() => {
+          video.pause();
+          video.currentTime = 0;
+        }, 500); // 0.5 seconds
+      } catch (err) {
+        console.warn("Initial autoplay blocked:", err);
+      }
+    };
 
+    playBriefly();
     window.addEventListener("scroll", () => {
       if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
     });
