@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
 const VIDEO_SRC = "/output-1.mp4";
-const POSTER_SRC = "/metabridge-video-poster.png";
 
 type Props = {
   t: {
@@ -102,20 +101,6 @@ export default function VideoScrubSection({ t }: Props) {
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {/* ✅ Gradient background while loading */}
-        {!isReady && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
-        )}
-
-        {/* ✅ Poster fallback */}
-        <img
-          src={POSTER_SRC}
-          alt="Metabridge background"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-            isReady ? "opacity-0" : "opacity-100"
-          }`}
-        />
-
-        {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
@@ -124,11 +109,8 @@ export default function VideoScrubSection({ t }: Props) {
           preload="auto"
           muted
           playsInline
-          disablePictureInPicture
-          poster={POSTER_SRC}
           src={VIDEO_SRC}
         />
-
         {/* ✅ Overlay text */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center pt-[77px] px-6">
           <div className="max-w-[900px] mx-auto text-center">
