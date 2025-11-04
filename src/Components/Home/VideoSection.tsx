@@ -122,9 +122,9 @@ export default function VideoScrubSection({ t }: Props) {
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {/* ✅ Gradient background while loading */}
-        {/* {!isReady && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
-        )} */}
+        {!isReady && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#203446] to-[#0b1118]" />
+        )}
 
         {/* ✅ Poster fallback */}
         <img
