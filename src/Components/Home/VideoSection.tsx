@@ -1,8 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/metabridge-video-14.mp4";
-const POSTER_SRC = "/metabridge-video-poster.png"; 
+const VIDEO_SRC = "/metabridge-video.mp4";
+const POSTER_SRC = "/metabridge-video-poster.png";
+
+// Detect if mobile device
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  ) || window.innerWidth < 768;
+};
 
 type Props = {
   t: {
@@ -18,85 +25,98 @@ export default function VideoScrubSection({ t }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const video = videoRef.current;
-    if (!container || !video) return;
+ useLayoutEffect(() => {
+  const container = containerRef.current;
+  const video = videoRef.current;
+  if (!container || !video) return;
 
-    let rafId: number | null = null;
-    let targetTime = 0;
-    let currentTime = 0;
-    let isUserActivated = false;
+  let rafId: number;
+  let scrollProgress = 0;
+  let targetProgress = 0;
+  let currentTime = 0;
+  let lastTimeUpdate = 0;
+  let isUserActivated = false;
 
-    // ✅ Linear interpolation helper (smooth catching up)
-    const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+  const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
-    const markReady = () => setIsReady(true);
+  // 🧮 Scroll listener: updates only targetProgress
+  const onScroll = () => {
+    const scrollTop = window.scrollY - container.offsetTop;
+    const scrollRange = container.offsetHeight - window.innerHeight;
+    const newProgress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
+    targetProgress = newProgress;
+  };
 
-    const updateVideoTime = () => {
-      if (!video || video.readyState < 2) {
-        rafId = requestAnimationFrame(updateVideoTime);
-        return;
-      }
+  const update = (timestamp: number) => {
+    // 🧩 Compute smoothing dynamically based on scroll speed
+    const velocity = Math.abs(targetProgress - scrollProgress);
+    const smoothing = velocity > 0.05 ? 0.25 : velocity > 0.01 ? 0.18 : 0.12;
 
-      const scrollTop = window.scrollY - container.offsetTop;
-      const scrollRange = container.offsetHeight - window.innerHeight;
-      const progress = Math.min(
-        1,
-        Math.max(0, scrollTop / Math.max(1, scrollRange))
-      );
+    // Smooth scroll progress interpolation
+    scrollProgress = lerp(scrollProgress, targetProgress, smoothing);
 
-      // ✅ Compute target time based on scroll progress
-      targetTime = progress * (video.duration || 0);
+    if (video.readyState >= 2 && video.duration) {
+      const targetTime = scrollProgress * video.duration;
+      // Smooth video time interpolation
+      currentTime = lerp(currentTime, targetTime, 0.25);
 
-      // ✅ Faster responsiveness (0.18 = quicker catch-up)
-      currentTime = lerp(currentTime, targetTime, 0.18); 
+      // 🧠 Decode pacing: only update every ~16ms (≈60fps)
+      if (timestamp - lastTimeUpdate > 16) {
+        const diff = Math.abs(video.currentTime - currentTime);
 
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
-        try {
-          video.currentTime = currentTime;
-        } catch {
-          // Chrome may block before play gesture
+        // 🧩 Avoid large seeks that cause decode stalls
+        if (diff > 0.03) {
+          try {
+            video.currentTime = currentTime;
+            lastTimeUpdate = timestamp;
+          } catch {}
         }
       }
+    }  
 
-      rafId = requestAnimationFrame(updateVideoTime);
-    };
+    rafId = requestAnimationFrame(update);
+  };
 
-    const tryActivateVideo = async () => {
-      if (isUserActivated) return;
-      isUserActivated = true;
-      try {
-        await video.play();
-        video.pause(); // forces Chrome to decode frames
-        video.currentTime = 0;
-        markReady();
-      } catch {
-        console.warn("Autoplay blocked, waiting for user gesture...");
-      }
-    };
+  const markReady = () => setIsReady(true);
 
-    const onUserGesture = async () => {
-      await tryActivateVideo();
-      window.removeEventListener("click", onUserGesture);
-      window.removeEventListener("touchstart", onUserGesture);
-    };
+  const tryActivateVideo = async () => {
+    if (isUserActivated) return;
+    isUserActivated = true;
+    try {
+      // 🔥 Pre-decode trick: play + pause 1 frame to prime decoder
+      await video.play();
+      video.pause();
+      video.currentTime = 0.01;
+      await video.play();
+      video.pause();
+      video.currentTime = 0;
+      markReady();
+    } catch {
+      console.warn("Autoplay blocked until user gesture");
+    }
+  }; 
 
-    video.addEventListener("loadeddata", markReady);
-    window.addEventListener("scroll", () => {
-      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
-    });
-    window.addEventListener("click", onUserGesture, { once: true });
-    window.addEventListener("touchstart", onUserGesture, { once: true });
+  const onUserGesture = async () => {
+    await tryActivateVideo();
+    window.removeEventListener("click", onUserGesture);
+    window.removeEventListener("touchstart", onUserGesture);
+  };
 
-    rafId = requestAnimationFrame(updateVideoTime);
+  video.addEventListener("loadeddata", markReady);
+  window.addEventListener("scroll", onScroll);
+  window.addEventListener("click", onUserGesture, { once: true });
+  window.addEventListener("touchstart", onUserGesture, { once: true });
 
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener("click", onUserGesture);
-      window.removeEventListener("touchstart", onUserGesture);
-    };
-  }, []);
+  onScroll();
+  rafId = requestAnimationFrame(update);
+
+  return () => {
+    cancelAnimationFrame(rafId);
+    window.removeEventListener("scroll", onScroll);
+    window.removeEventListener("click", onUserGesture);
+    window.removeEventListener("touchstart", onUserGesture);
+  };
+}, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
@@ -115,18 +135,23 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* ✅ Single video for all devices */}
+        {/* ✅ Single high-quality video with smart loading */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
+          preload={isMobile() ? "metadata" : "auto"}
           muted
           playsInline
           disablePictureInPicture
           poster={POSTER_SRC}
           src={VIDEO_SRC}
+          style={{
+            // ✅ Hardware acceleration for smoother playback
+            transform: "translateZ(0)",
+            willChange: "auto"
+          }}
         />
 
         {/* ✅ Overlay text */}
