@@ -18,99 +18,85 @@ export default function VideoScrubSection({ t }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-useLayoutEffect(() => {
-  const container = containerRef.current;
-  const video = videoRef.current;
-  if (!container || !video) return;
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container || !video) return;
 
-  let rafId: number;
-  let scrollProgress = 0;
-  let targetProgress = 0;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let currentTime = 0;
-  let isUserActivated = false;
+    let rafId: number | null = null;
+    let targetTime = 0;
+    let currentTime = 0;
+    let isUserActivated = false;
 
-  const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
+    // ✅ Linear interpolation helper (smooth catching up)
+    const lerp = (a: number, b: number, n: number) => a + (b - a) * n;
 
-  const onScroll = () => {
-    const scrollTop = window.scrollY - container.offsetTop;
-    const scrollRange = Math.max(1, container.offsetHeight - window.innerHeight);
-    targetProgress = Math.min(1, Math.max(0, scrollTop / scrollRange));
-  };
+    const markReady = () => setIsReady(true);
 
-  const update = () => {
-    const diff = Math.abs(targetProgress - scrollProgress);
-
-    // Faster smoothing only when big scroll changes
-    const smoothFactor = diff > 0.1 ? 0.4 : 0.2;
-    scrollProgress = lerp(scrollProgress, targetProgress, smoothFactor);
-
-    if (video.readyState >= 2 && video.duration) {
-      const targetTime = scrollProgress * video.duration;
-
-      // Don’t hammer the decoder — only seek when we’re off by ≥ one frame
-      if (Math.abs(video.currentTime - targetTime) > 0.03) {
-        try {
-          video.currentTime = targetTime;
-        } catch {}
+    const updateVideoTime = () => {
+      if (!video || video.readyState < 2) {
+        rafId = requestAnimationFrame(updateVideoTime);
+        return;
       }
-      currentTime = targetTime;
-    }
 
-    rafId = requestAnimationFrame(update);
-  };
+      const scrollTop = window.scrollY - container.offsetTop;
+      const scrollRange = container.offsetHeight - window.innerHeight;
+      const progress = Math.min(
+        1,
+        Math.max(0, scrollTop / Math.max(1, scrollRange))
+      );
 
-  const ensurePlayable = async () => {
-    if (isUserActivated) return;
-    isUserActivated = true;
-    try {
-      video.muted = true;
-      video.playbackRate = 0;
-      await video.play();
-      video.pause();
-      video.playbackRate = 0;
-      setIsReady(true);
-    } catch {
-      console.warn("Autoplay blocked, waiting for user gesture...");
-    }
-  };
+      // ✅ Compute target time based on scroll progress
+      targetTime = progress * (video.duration || 0);
 
-  const onUserGesture = async () => {
-    await ensurePlayable();
-    window.removeEventListener("click", onUserGesture);
-    window.removeEventListener("touchstart", onUserGesture);
-  };
+      // ✅ Faster responsiveness (0.18 = quicker catch-up)
+      currentTime = lerp(currentTime, targetTime, 0.25); 
 
-  video.addEventListener("loadeddata", ensurePlayable);
-  window.addEventListener("scroll", onScroll);
-  window.addEventListener("click", onUserGesture, { once: true });
-  window.addEventListener("touchstart", onUserGesture, { once: true });
+      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+        try {
+          video.currentTime = currentTime;
+        } catch {
+          // Chrome may block before play gesture
+        }
+      }
 
-  const onVisibilityChange = () => {
-    if (document.hidden) {
-      cancelAnimationFrame(rafId);
-    } else {
-      rafId = requestAnimationFrame(update);
-    }
-  };
-  document.addEventListener("visibilitychange", onVisibilityChange);
+      rafId = requestAnimationFrame(updateVideoTime);
+    };
 
-  // Kick off loop
-  onScroll();
-  rafId = requestAnimationFrame(update);
+    const tryActivateVideo = async () => {
+      if (isUserActivated) return;
+      isUserActivated = true;
+      try {
+        await video.play();
+        video.pause(); // forces Chrome to decode frames
+        video.currentTime = 0;
+        markReady();
+      } catch {
+        console.warn("Autoplay blocked, waiting for user gesture...");
+      }
+    };
 
-  return () => {
-    cancelAnimationFrame(rafId);
-    video.removeEventListener("loadeddata", ensurePlayable);
-    window.removeEventListener("scroll", onScroll);
-    window.removeEventListener("click", onUserGesture);
-    window.removeEventListener("touchstart", onUserGesture);
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-  };
-}, []);
+    const onUserGesture = async () => {
+      await tryActivateVideo();
+      window.removeEventListener("click", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
+    };
 
+    video.addEventListener("loadeddata", markReady);
+    window.addEventListener("scroll", () => {
+      if (!rafId) rafId = requestAnimationFrame(updateVideoTime);
+    });
+    window.addEventListener("click", onUserGesture, { once: true });
+    window.addEventListener("touchstart", onUserGesture, { once: true });
 
+    rafId = requestAnimationFrame(updateVideoTime);
 
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("click", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
+    };
+  }, []);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
@@ -129,7 +115,7 @@ useLayoutEffect(() => {
           }`}
         />
 
-        {/* ✅ Single high-quality video with smart loading */}
+        {/* ✅ Single video for all devices */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${
@@ -141,11 +127,6 @@ useLayoutEffect(() => {
           disablePictureInPicture
           poster={POSTER_SRC}
           src={VIDEO_SRC}
-          style={{
-            // ✅ Hardware acceleration for smoother playback
-            transform: "translateZ(0)",
-            willChange: "auto"
-          }}
         />
 
         {/* ✅ Overlay text */}
