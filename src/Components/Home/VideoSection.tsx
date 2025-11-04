@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import ContactButton from "../ContactButton";
 
 const VIDEO_SRC = "/metabridge-video-14.mp4";
 const POSTER_SRC = "/metabridge-video-poster.png";
+
+// Placeholder ContactButton component
+const ContactButton = ({ label }) => (
+  <button className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+    {label}
+  </button>
+);
 
 type Props = {
   t: {
@@ -17,6 +23,19 @@ export default function VideoScrubSection({ t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Detect mobile devices for performance optimization
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      );
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -24,14 +43,12 @@ export default function VideoScrubSection({ t }: Props) {
     if (!container || !video) return;
 
     let rafId: number;
-    let targetTime = 0;
-    let smoothTime = 0;
+    let currentTime = 0;
     let isUserActivated = false;
-    let lastProgress = 0;
 
     const markReady = () => setIsReady(true);
 
-    // --- Core animation loop ---
+    // --- Core animation loop (FIXED for smooth bidirectional scrolling) ---
     const updateVideoTime = () => {
       if (!video || video.readyState < 2 || !video.duration) {
         rafId = requestAnimationFrame(updateVideoTime);
@@ -42,25 +59,23 @@ export default function VideoScrubSection({ t }: Props) {
       const scrollRange = container.offsetHeight - window.innerHeight;
       const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollRange)));
 
-      // Update target based on scroll
-      targetTime = progress * video.duration;
+      // Calculate target time
+      const targetTime = progress * video.duration;
 
-      // --- Smooth easing between frames ---
-      // Smaller step for gentle blending
-      const diff = targetTime - smoothTime;
-      const step = diff * 0.15; // lower = smoother motion, 0.1–0.2 is ideal
-      smoothTime += step;
+      // Improved smoothing - works for both forward and backward
+      const distance = targetTime - currentTime;
+      const easeFactor = isMobile ? 0.25 : 0.18; // Faster on mobile for better performance
+      currentTime += distance * easeFactor;
 
-      // Prevent micro-jitter by clamping small changes
-      if (Math.abs(video.currentTime - smoothTime) > 0.002) {
+      // Update video current time with smooth transition
+      if (Math.abs(video.currentTime - currentTime) > 0.001) {
         try {
-          video.currentTime = smoothTime;
+          video.currentTime = currentTime;
         } catch {
           /* ignore Chrome pre-play restriction */
         }
       }
 
-      lastProgress = progress;
       rafId = requestAnimationFrame(updateVideoTime);
     };
 
@@ -80,30 +95,38 @@ export default function VideoScrubSection({ t }: Props) {
 
     const onUserGesture = async () => {
       await tryActivateVideo();
-      window.removeEventListener("click", onUserGesture);
-      window.removeEventListener("touchstart", onUserGesture);
     };
 
     // --- Start loop ---
     rafId = requestAnimationFrame(updateVideoTime);
-    video.addEventListener("loadeddata", markReady);
+    
+    // Better loading detection for mobile
+    if (isMobile) {
+      video.addEventListener("canplaythrough", markReady);
+    } else {
+      video.addEventListener("loadeddata", markReady);
+    }
+    
     window.addEventListener("click", onUserGesture, { once: true });
     window.addEventListener("touchstart", onUserGesture, { once: true });
 
     return () => {
       cancelAnimationFrame(rafId);
       video.removeEventListener("loadeddata", markReady);
+      video.removeEventListener("canplaythrough", markReady);
       window.removeEventListener("click", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
     };
-  }, []);
+  }, [isMobile]);
 
   return (
     <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         {/* Gradient background while loading */}
         {!isReady && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]" />
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-[#0b1016] via-[#12202c] to-[#0b1016]">
+            <div className="text-white text-sm animate-pulse">Loading...</div>
+          </div>
         )}
 
         {/* Poster fallback */}
@@ -115,13 +138,13 @@ export default function VideoScrubSection({ t }: Props) {
           }`}
         />
 
-        {/* Video layer */}
+        {/* Video layer with mobile optimization */}
         <video
           ref={videoRef}
           className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-[1000ms] ${
             isReady ? "opacity-100" : "opacity-0"
           }`}
-          preload="auto"
+          preload={isMobile ? "metadata" : "auto"} // Load less data on mobile
           muted
           playsInline
           disablePictureInPicture
@@ -148,5 +171,4 @@ export default function VideoScrubSection({ t }: Props) {
         </div>
       </div>
     </div>
-  );
-}
+  );}
