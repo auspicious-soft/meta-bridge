@@ -23,9 +23,7 @@ transition: all 0.7s ease;
 .contact-button:hover, .contact-button:hover .contact-button {
   background: linear-gradient(#000000, #000000) padding-box, linear-gradient(70deg,  rgba(0, 0, 0, 0.06), rgb(255, 255, 255)) border-box;
 }
-.button-hover:hover .text {
-  transform: translateX(24px); 
-}
+
 
 .button-hover:hover .hover-bg {
   transform: translatey(-98px) rotate(180deg);
@@ -82,6 +80,9 @@ img{
 @media(min-width: 769px){
 .button-hover:hover .icon {
   transform: translateX(-100px); 
+}
+.button-hover:hover .text {
+  transform: translateX(24px); 
 }
 }
 @media(max-width: 768px){
