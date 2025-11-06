@@ -1,7 +1,9 @@
 import { motion, useInView, useAnimation } from "framer-motion";
 import { useEffect, useRef } from "react";
 import MetaEcosystem from "../../Assets/meta-ecosystem.png";
+import MetaEcosystemMobile from "../../Assets/MetaEcosystemMobile.png";
 import MetaEcosystemIt from "../../Assets/meta-ecosystem-it.png";
+import MetaEcosystemMobileIt from "../../Assets/MetaEcosystemMobileIt.png";
 import ContactButton from "../ContactButton";
 type Props = {
     t: {
@@ -30,6 +32,9 @@ const ChooseMetabridgeSection = ({ t }: Props) => {
     // 🔹 Choose image based on language
     const selectedImage =
         t.lang === "it" ? MetaEcosystemIt : MetaEcosystem;
+
+         const selectedImageMobile =
+        t.lang === "it" ? MetaEcosystemMobileIt : MetaEcosystemMobile;
 
     return (
         <div className="w-full overflow-hidden mb-12 mb:my-24 pt-12 md:pt-24">
@@ -74,8 +79,13 @@ const ChooseMetabridgeSection = ({ t }: Props) => {
                         }}
                     >
                         <img
-                            className="w-full max-w-2xl m-auto"
+                            className="w-full max-w-2xl m-auto hidden md:block"
                             src={selectedImage}
+                            alt="Meta Ecosystem"
+                        />
+                         <img
+                            className="w-full max-w-2xl m-auto block md:hidden"
+                            src={selectedImageMobile}
                             alt="Meta Ecosystem"
                         />
                     </motion.div>
