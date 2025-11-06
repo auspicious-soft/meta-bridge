@@ -25,10 +25,7 @@ transition: all 0.7s ease;
 }
 
 
-.button-hover:hover .hover-bg {
-  transform: translatey(-98px) rotate(180deg);
-  transition: transform 1s ease; 
-}
+
 img{
   max-width: 100%;
 }
@@ -83,6 +80,10 @@ img{
 }
 .button-hover:hover .text {
   transform: translateX(24px); 
+}
+.button-hover:hover .hover-bg {
+  transform: translatey(-98px) rotate(180deg);
+  transition: transform 1s ease; 
 }
 }
 @media(max-width: 768px){
