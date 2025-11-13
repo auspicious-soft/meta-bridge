@@ -102,7 +102,7 @@ export default function VideoScrubSection({ t }: Props) {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
+    <div ref={containerRef} className="relative" style={{ height: "200vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
         <video
           ref={videoRef}
