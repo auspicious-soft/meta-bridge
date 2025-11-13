@@ -41,7 +41,7 @@ export default function VideoScrubSection({ t }: Props) {
         Math.max(0, scrollTop / Math.max(1, scrollRange))
       );
 
-      targetTime = progress * (video.duration || 0);
+      targetTime = Math.min(1, progress * 3) * (video.duration || 0);
       currentTime = lerp(currentTime, targetTime, 0.25);
 
       if (Math.abs(video.currentTime - currentTime) > 0.01) {
