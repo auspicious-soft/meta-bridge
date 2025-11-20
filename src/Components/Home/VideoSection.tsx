@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import ContactButton from "../ContactButton";
 
-const VIDEO_SRC = "/comp1.mp4";
+const VIDEO_SRC = "/metabridge-video-new.mp4";
 
 type Props = {
   t: {
@@ -42,9 +42,9 @@ export default function VideoScrubSection({ t }: Props) {
       );
 
       targetTime = Math.min(1, progress * 1.5) * (video.duration || 0);
-      currentTime = lerp(currentTime, targetTime, 0.25);
+      currentTime = lerp(currentTime, targetTime, 0.5);
 
-      if (Math.abs(video.currentTime - currentTime) > 0.01) {
+      if (Math.abs(video.currentTime - currentTime) > 0.01) { 
         try {
           video.currentTime = currentTime;
         } catch {
